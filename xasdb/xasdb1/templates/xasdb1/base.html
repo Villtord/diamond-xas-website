@@ -8,6 +8,7 @@
     {% if user.is_authenticated %}
     	Welcome back {{ user.get_username }}!
 	<a href="{% url 'xasdb1:logout' %}">logout</a>
+	<a href="{% url 'xasdb1:upload' %}">upload</a>
     {% else %}
 	<a href="{% url 'xasdb1:register' %}">register</a>
 	<a href="{% url 'xasdb1:login' %}">login</a>

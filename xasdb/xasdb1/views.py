@@ -11,7 +11,8 @@ from django.contrib.auth import authenticate
 from django.contrib.auth import login as _login
 from django.contrib.auth import logout as _logout
 
-# Create your views here.
+from .forms import FormWithFileField, ModelFormWithFileField
+
 def index(request):
     return render(request, 'xasdb1/index.html')
 
@@ -21,7 +22,7 @@ def register(request):
         if f.is_valid():
             f.save()
             messages.success(request, 'Account created successfully')
-            return redirect('register')
+            return redirect('/xasdb1/register')
 
     else:
         f = UserCreationForm()
@@ -66,4 +67,16 @@ def logout(request):
 
 def element(request, element_id):
     return render(request, 'xasdb1/element.html', {'element': element_id})
-    
+
+@login_required
+def upload(request):
+    if request.method == 'POST':
+        form = ModelFormWithFileField(request.POST, request.FILES)
+        if form.is_valid():
+            # file is saved
+            form.save()
+            messages.success(request, 'File uploaded')
+            return HttpResponseRedirect('/xasdb1/')
+    else:
+        form = ModelFormWithFileField()
+    return render(request, 'xasdb1/upload.html', {'form': form})
