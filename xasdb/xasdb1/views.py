@@ -12,6 +12,11 @@ from django.contrib.auth import login as _login
 from django.contrib.auth import logout as _logout
 
 from .forms import FormWithFileField, ModelFormWithFileField
+from .models import XASFile
+
+import xdifile
+import xraylib as xrl
+import tempfile
 
 def index(request):
     return render(request, 'xasdb1/index.html')
@@ -72,9 +77,31 @@ def element(request, element_id):
 def upload(request):
     if request.method == 'POST':
         form = ModelFormWithFileField(request.POST, request.FILES)
+        print('before form is_valid')
         if form.is_valid():
-            # file is saved
-            form.save()
+            print('before form save')
+            print(type(request.FILES['upload_file']))
+            value = request.FILES['upload_file']
+            value.seek(0)
+            with tempfile.NamedTemporaryFile() as f:
+                #value.open()
+                contents = value.read()
+                f.write(contents)
+                #value.close()
+                xdi_file = xdifile.XDIFile(filename=f.name)
+                value.seek(0)
+            print('element: {}'.format(xdi_file.element))
+            atomic_number = xrl.SymbolToAtomicNumber(xdi_file.element.decode('utf-8'))
+            print('atomic_number: {}'.format(atomic_number))
+            print('edge: {}'.format(xdi_file.edge))
+            instance = XASFile(atomic_number=atomic_number, upload_file=value)
+            form = ModelFormWithFileField(request.POST, instance = instance)
+            try:
+                form.save()
+            except ValueError as e:
+                print('form.save() exception: {}'.format(e))
+                print('form.errors: {}'.format(form.errors))
+            print('after form save')
             messages.success(request, 'File uploaded')
             return HttpResponseRedirect('/xasdb1/')
     else:
