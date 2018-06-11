@@ -72,7 +72,11 @@ def logout(request):
     return HttpResponseRedirect('/xasdb1/')
 
 def element(request, element_id):
-    return render(request, 'xasdb1/element.html', {'element': element_id})
+    # user may be naughty by providing a non-existent element
+    if xrl.SymbolToAtomicNumber(element_id) == 0:
+        messages.error(request, 'I am sure you already know that there is no element called ' + element_id + ' . Use the periodic table and stop fooling around.')
+        return HttpResponseRedirect('/xasdb1/')
+    return render(request, 'xasdb1/element.html', {'element': element_id, 'files': XASFile.objects.filter(element=element_id).order_by('sample_name')})
 
 @login_required
 def upload(request):

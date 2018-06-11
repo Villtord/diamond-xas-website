@@ -40,6 +40,7 @@ class XASFile(models.Model):
     edge = models.CharField(max_length=3, default='')
     uploader = models.ForeignKey(User, on_delete=models.SET_NULL, null=True)
     review_status = models.SmallIntegerField(choices=REVIEW_STATUS_CHOICES, default=PENDING)
+    sample_name = models.CharField(max_length=100, default='unknown')
 
 class XASArray(models.Model):
     file = models.ForeignKey(XASFile, on_delete=models.CASCADE)

@@ -5,6 +5,20 @@
 {% endblock %}
 
 {% block content %}
-{{ element }}
+{% include 'xasdb1/mendeljev.html' %}
+
+<div id='spectra'>
+<hr>
+{% if files|length == 0 %}
+	No spectra found for {{element}}.
+{% else %}
+	{% if files|length == 1 %}
+		1 spectrum for {{element}}
+	{% else %}
+		{{ files|length }} spectra for {{element}}
+	{% endif %}
+
+{% endif %}
+</div>
 {% endblock %}
 
