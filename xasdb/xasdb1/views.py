@@ -17,6 +17,7 @@ from .models import XASFile
 import xdifile
 import xraylib as xrl
 import tempfile
+import json
 
 def index(request):
     return render(request, 'xasdb1/index.html')
@@ -80,27 +81,29 @@ def upload(request):
         print('before form is_valid')
         if form.is_valid():
             print('before form save')
-            print(type(request.FILES['upload_file']))
             value = request.FILES['upload_file']
             value.seek(0)
             with tempfile.NamedTemporaryFile() as f:
-                #value.open()
                 contents = value.read()
                 f.write(contents)
-                #value.close()
                 xdi_file = xdifile.XDIFile(filename=f.name)
                 value.seek(0)
-            print('element: {}'.format(xdi_file.element))
-            atomic_number = xrl.SymbolToAtomicNumber(xdi_file.element.decode('utf-8'))
+            element = xdi_file.element.decode('utf-8')
+            print('element: {}'.format(element))
+            atomic_number = xrl.SymbolToAtomicNumber(element)
             print('atomic_number: {}'.format(atomic_number))
-            print('edge: {}'.format(xdi_file.edge))
-            instance = XASFile(atomic_number=atomic_number, upload_file=value)
-            form = ModelFormWithFileField(request.POST, instance = instance)
+            edge = xdi_file.edge.decode('utf-8')
+            print('edge: {}'.format(edge))
+            xas_file = XASFile(atomic_number=atomic_number, upload_file=value, uploader=request.user, element=element, edge=edge)
+            #form = ModelFormWithFileField(request.POST, instance = instance)
             try:
-                form.save()
-            except ValueError as e:
+                xas_file.save()
+                # add arrays
+                for name, unit in zip(xdi_file.array_labels, xdi_file.array_units):
+                    xas_file.xasarray_set.create(name=name, unit=unit, array=json.dumps(getattr(xdi_file, name).tolist()))
+            except Exception as e:
                 print('form.save() exception: {}'.format(e))
-                print('form.errors: {}'.format(form.errors))
+                #print('form.errors: {}'.format(form.errors))
             print('after form save')
             messages.success(request, 'File uploaded')
             return HttpResponseRedirect('/xasdb1/')
