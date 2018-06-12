@@ -18,6 +18,9 @@ import xdifile
 import xraylib as xrl
 import tempfile
 import json
+import numpy as np
+import io
+import matplotlib.pyplot as plt
 
 def index(request):
     return render(request, 'xasdb1/index.html')
@@ -76,7 +79,7 @@ def element(request, element_id):
     if xrl.SymbolToAtomicNumber(element_id) == 0:
         messages.error(request, 'I am sure you already know that there is no element called ' + element_id + ' . Use the periodic table and stop fooling around.')
         return HttpResponseRedirect('/xasdb1/')
-    return render(request, 'xasdb1/element.html', {'element': element_id, 'files': XASFile.objects.filter(element=element_id).order_by('sample_name')})
+    return render(request, 'xasdb1/element.html', {'element': element_id, 'files': XASFile.objects.filter(element=element_id).filter(review_status=XASFile.APPROVED).order_by('sample_name')})
 
 @login_required
 def upload(request):
@@ -119,3 +122,23 @@ def upload(request):
     else:
         form = ModelFormWithFileField()
     return render(request, 'xasdb1/upload.html', {'form': form})
+
+def file(request, file_id):
+    return render(request, 'xasdb1/file.html', {'file' : XASFile.objects.get(id=file_id)})
+
+def file_plot(request, file_id, xaxis_name, yaxis_name):
+    file = XASFile.objects.get(id=file_id)
+    xaxis = np.array(json.loads(file.xasarray_set.get(name = xaxis_name).array))
+    yaxis = np.array(json.loads(file.xasarray_set.get(name = yaxis_name).array))
+    fig = plt.figure()
+    ax = fig.add_subplot(111)
+    ax.set_xlabel(xaxis_name) # TODO: unit
+    ax.set_ylabel(yaxis_name)
+    ax.plot(xaxis, yaxis)
+    buf = io.BytesIO()
+    plt.savefig(buf, format='png')
+    plt.close()
+    plt_bytes = buf.getvalue()
+    buf.close()
+    return HttpResponse(plt_bytes, content_type="image/png")
+

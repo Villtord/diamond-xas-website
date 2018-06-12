@@ -1,0 +1,16 @@
+{% extends 'xasdb1/base.html' %}
+
+{% block title %}
+{{ file.sample_name }}
+{% endblock %}
+
+
+{% block content %}
+<p><div>Spectrum: {{file.sample_name}}</div>
+<p>
+<table><tr>
+		<td><img src="{% url 'xasdb1:file_plot' file.id 'energy' 'mutrans' %}"/></td>
+	</tr>
+</table>
+<br/>
+{% endblock %}
