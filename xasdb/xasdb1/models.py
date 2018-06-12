@@ -46,4 +46,4 @@ class XASArray(models.Model):
     file = models.ForeignKey(XASFile, on_delete=models.CASCADE)
     array = models.TextField() # this will be a numpy array turned into JSON...
     unit = models.CharField(max_length=20)
-    name = models.CharField(max_length=50, primary_key=True)
+    name = models.CharField(max_length=50)

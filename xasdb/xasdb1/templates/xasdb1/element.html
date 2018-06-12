@@ -17,7 +17,18 @@
 	{% else %}
 		{{ files|length }} spectra for {{element}}
 	{% endif %}
-
+	<table cellspacing=5 cellpadding=2>
+		<tr>
+			<th>Name</th>
+			<th>Edge</th>
+		</tr>
+		{% for file in files %}
+		<tr>
+			<td>{{ file.sample_name }}</td>
+			<td>{{ file.edge }}</td>
+		</tr>
+		{% endfor %}
+	</table>
 {% endif %}
 </div>
 {% endblock %}

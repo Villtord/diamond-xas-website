@@ -98,7 +98,12 @@ def upload(request):
             print('atomic_number: {}'.format(atomic_number))
             edge = xdi_file.edge.decode('utf-8')
             print('edge: {}'.format(edge))
-            xas_file = XASFile(atomic_number=atomic_number, upload_file=value, uploader=request.user, element=element, edge=edge)
+            kwargs = dict()
+            if 'sample' in xdi_file.attrs and 'name' in xdi_file.attrs['sample']:
+                kwargs['sample_name'] = xdi_file.attrs['sample']['name']
+                print('sample_name: {}'.format(kwargs['sample_name']))
+
+            xas_file = XASFile(atomic_number=atomic_number, upload_file=value, uploader=request.user, element=element, edge=edge, **kwargs)
             #form = ModelFormWithFileField(request.POST, instance = instance)
             try:
                 xas_file.save()
