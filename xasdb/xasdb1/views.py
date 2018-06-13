@@ -79,6 +79,9 @@ def element(request, element_id):
     if xrl.SymbolToAtomicNumber(element_id) == 0:
         messages.error(request, 'I am sure you already know that there is no element called ' + element_id + ' . Use the periodic table and stop fooling around.')
         return HttpResponseRedirect('/xasdb1/')
+    # make a distinction between staff and non-staff:
+    # 1. staff should be able to see all spectra, regardless of review_status, and should be able to change that review_status
+    # 2. non-staff should be able to see all APPROVED spectra, as well as those uploaded by the user that were either rejected or pending review
     return render(request, 'xasdb1/element.html', {'element': element_id, 'files': XASFile.objects.filter(element=element_id).filter(review_status=XASFile.APPROVED).order_by('sample_name')})
 
 @login_required
