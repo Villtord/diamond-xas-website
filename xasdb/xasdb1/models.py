@@ -12,9 +12,7 @@ def xdi_valid(value):
     print('xdi_value url: {}'.format(value.url))
     
     with tempfile.NamedTemporaryFile() as f:
-        #value.open()
         f.write(value.read())
-        #value.close()
         try:
             xdi_file = xdifile.XDIFile(filename=f.name)
             print('element: {}'.format(xdi_file.element))
