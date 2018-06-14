@@ -86,8 +86,11 @@ def element(request, element_id):
     if request.user.is_staff:
         return render(request, 'xasdb1/element.html', {'element': element_id, 'files': XASFile.objects.filter(element=element_id).order_by('sample_name')})
     # 2. non-staff should be able to see all APPROVED spectra, as well as those uploaded by the user that were either rejected or pending review
-    data_filter = Q(uploader=request.user) | (~Q(uploader=request.user) & Q(review_status=XASFile.APPROVED))
-    return render(request, 'xasdb1/element.html', {'element': element_id, 'files': XASFile.objects.filter(element=element_id).filter(data_filter).order_by('sample_name')})
+    elif request.user.is_authenticated:
+        data_filter = Q(uploader=request.user) | (~Q(uploader=request.user) & Q(review_status=XASFile.APPROVED))
+        return render(request, 'xasdb1/element.html', {'element': element_id, 'files': XASFile.objects.filter(element=element_id).filter(data_filter).order_by('sample_name')})
+    else:
+        return render(request, 'xasdb1/element.html', {'element': element_id, 'files': XASFile.objects.filter(element=element_id).filter(review_status=XASFile.APPROVED).order_by('sample_name')})
 
 @login_required(login_url='xasdb1:login')
 def upload(request):
@@ -124,7 +127,19 @@ def upload(request):
     return render(request, 'xasdb1/upload.html', {'form': form})
 
 def file(request, file_id):
-    return render(request, 'xasdb1/file.html', {'file' : XASFile.objects.get(id=file_id)})
+    # check first if this should be visible for the current user
+    file = XASFile.objects.get(id=file_id)
+    #print(f'request.user: {request.user}')
+    #print(f'request.user.is_authenticated: {request.user.is_authenticated}')
+    #print(f'request.user.is_staff: {request.user.is_staff}')
+    #print(f'file.uploader: {file.uploader}')
+    #print(f'file.review_status: {file.review_status}')
+    if (not request.user.is_authenticated and file.review_status != XASFile.APPROVED) or (not request.user.is_staff and request.user != file.uploader and file.review_status != XASFile.APPROVED):
+        messages.error(request, 'The requested file is not accessible')
+        return redirect('xasdb1:index')
+
+    return render(request, 'xasdb1/file.html', {'file' : file})
+    
 
 def file_plot(request, file_id, xaxis_name, yaxis_name):
     file = XASFile.objects.get(id=file_id)
