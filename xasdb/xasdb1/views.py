@@ -1,6 +1,6 @@
 from django.shortcuts import (render, redirect)
 from django.http import HttpResponse
-from django.http import HttpResponseRedirect
+from django.urls import reverse
 
 from django.contrib.auth.decorators import login_required
 from django.contrib import messages
@@ -10,6 +10,8 @@ from django.contrib.auth.forms import AuthenticationForm
 from django.contrib.auth import authenticate
 from django.contrib.auth import login as _login
 from django.contrib.auth import logout as _logout
+
+from django.db.models import Q
 
 from .forms import FormWithFileField, ModelFormWithFileField
 from .models import XASFile
@@ -21,6 +23,9 @@ import json
 import numpy as np
 import io
 import matplotlib.pyplot as plt
+import os.path
+
+XDI_TMP_DIR = tempfile.TemporaryDirectory()
 
 def index(request):
     return render(request, 'xasdb1/index.html')
@@ -31,8 +36,7 @@ def register(request):
         if f.is_valid():
             f.save()
             messages.success(request, 'Account created successfully')
-            return redirect('/xasdb1/register')
-
+            return redirect('xasdb1:index')
     else:
         f = UserCreationForm()
 
@@ -44,7 +48,7 @@ class AuthenticationFormWithInactiveUsersOkay(AuthenticationForm):
 
 def login(request):
     if request.user.is_authenticated:
-        return HttpResponseRedirect('/xasdb1/')
+        return redirect('xasdb1:index')
     if request.method == 'POST':
         f = AuthenticationFormWithInactiveUsersOkay(request, data=request.POST)
         if f.is_valid():
@@ -52,15 +56,13 @@ def login(request):
             password = f.cleaned_data.get('password')
             user = authenticate(username=username, password=password)
             if user is not None:
-                print(user)
                 _login(request, user)
                 messages.success(request, username + ' logged in!')
-                return HttpResponseRedirect('/xasdb1/')
-            else:
-                print('User not found')
+                return redirect('xasdb1:index')
             messages.error(request, 'Could not authenticate ' + username)
-            return redirect('login')
-
+        #else:
+        #    return
+        #    print('Invalid form -> probably means that the username or password is incorrect!')
     else:
         f = AuthenticationFormWithInactiveUsersOkay()
 
@@ -69,48 +71,45 @@ def login(request):
 def logout(request):
     if not request.user.is_authenticated:
         messages.error(request, 'Not logged in!')
-        return HttpResponseRedirect('/xasdb1/')
+        return redirect('xasdb1:index')
     _logout(request)
     messages.success(request, 'Logged out!')
-    return HttpResponseRedirect('/xasdb1/')
+    return redirect('xasdb1:index')
 
 def element(request, element_id):
     # user may be naughty by providing a non-existent element
     if xrl.SymbolToAtomicNumber(element_id) == 0:
         messages.error(request, 'I am sure you already know that there is no element called ' + element_id + ' . Use the periodic table and stop fooling around.')
-        return HttpResponseRedirect('/xasdb1/')
+        return redirect('xasdb1:index')
     # make a distinction between staff and non-staff:
     # 1. staff should be able to see all spectra, regardless of review_status, and should be able to change that review_status
+    if request.user.is_staff:
+        return render(request, 'xasdb1/element.html', {'element': element_id, 'files': XASFile.objects.filter(element=element_id).order_by('sample_name')})
     # 2. non-staff should be able to see all APPROVED spectra, as well as those uploaded by the user that were either rejected or pending review
-    return render(request, 'xasdb1/element.html', {'element': element_id, 'files': XASFile.objects.filter(element=element_id).filter(review_status=XASFile.APPROVED).order_by('sample_name')})
+    data_filter = Q(uploader=request.user) | (~Q(uploader=request.user) & Q(review_status=XASFile.APPROVED))
+    return render(request, 'xasdb1/element.html', {'element': element_id, 'files': XASFile.objects.filter(element=element_id).filter(data_filter).order_by('sample_name')})
 
-@login_required
+@login_required(login_url='xasdb1:login')
 def upload(request):
     if request.method == 'POST':
         form = ModelFormWithFileField(request.POST, request.FILES)
-        print('before form is_valid')
         if form.is_valid():
-            print('before form save')
             value = request.FILES['upload_file']
             value.seek(0)
-            with tempfile.NamedTemporaryFile() as f:
-                contents = value.read()
+            temp_xdi_file = os.path.join(XDI_TMP_DIR.name, value.name)
+            with open(temp_xdi_file, 'w') as f:
+                contents = value.read().decode('utf-8')
                 f.write(contents)
-                xdi_file = xdifile.XDIFile(filename=f.name)
-                value.seek(0)
+            xdi_file = xdifile.XDIFile(filename=temp_xdi_file)
+            value.seek(0)
             element = xdi_file.element.decode('utf-8')
-            print('element: {}'.format(element))
             atomic_number = xrl.SymbolToAtomicNumber(element)
-            print('atomic_number: {}'.format(atomic_number))
             edge = xdi_file.edge.decode('utf-8')
-            print('edge: {}'.format(edge))
             kwargs = dict()
             if 'sample' in xdi_file.attrs and 'name' in xdi_file.attrs['sample']:
                 kwargs['sample_name'] = xdi_file.attrs['sample']['name']
-                print('sample_name: {}'.format(kwargs['sample_name']))
 
             xas_file = XASFile(atomic_number=atomic_number, upload_file=value, uploader=request.user, element=element, edge=edge, **kwargs)
-            #form = ModelFormWithFileField(request.POST, instance = instance)
             try:
                 xas_file.save()
                 # add arrays
@@ -118,10 +117,8 @@ def upload(request):
                     xas_file.xasarray_set.create(name=name, unit=unit, array=json.dumps(getattr(xdi_file, name).tolist()))
             except Exception as e:
                 print('form.save() exception: {}'.format(e))
-                #print('form.errors: {}'.format(form.errors))
-            print('after form save')
             messages.success(request, 'File uploaded')
-            return HttpResponseRedirect('/xasdb1/')
+            return redirect('xasdb1:index')
     else:
         form = ModelFormWithFileField()
     return render(request, 'xasdb1/upload.html', {'form': form})

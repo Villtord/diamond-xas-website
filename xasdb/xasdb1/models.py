@@ -4,25 +4,24 @@ from django.core.exceptions import ValidationError
 
 import xdifile
 import tempfile
+import os.path
 
+XDI_TMP_DIR = tempfile.TemporaryDirectory()
 
 def xdi_valid(value):
-    print('Entering xdi_valid')
-    print('xdi_value name: {}'.format(value.name))
-    print('xdi_value url: {}'.format(value.url))
-    
-    with tempfile.NamedTemporaryFile() as f:
-        f.write(value.read())
-        try:
-            xdi_file = xdifile.XDIFile(filename=f.name)
-            print('element: {}'.format(xdi_file.element))
-            print('edge: {}'.format(xdi_file.edge))
-            return
-        except Exception as e:
-            print("XDI exception: {}".format(e))
+    temp_xdi_file = os.path.join(XDI_TMP_DIR.name, value.name)
 
+    with open(temp_xdi_file, 'w') as f:
+        f.write(value.read().decode('utf-8'))
 
-    raise ValidationError("Invalid file!")
+    try:
+        xdi_file = xdifile.XDIFile(filename=temp_xdi_file)
+        if xdi_file.element.decode('utf-8') == '':
+            raise Exception('no element found')
+        return
+    except Exception as e:
+        raise ValidationError(f"Invalid XDI file: {e}")
+
 
 class XASFile(models.Model):
     PENDING = 0
