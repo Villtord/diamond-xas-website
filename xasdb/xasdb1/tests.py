@@ -234,4 +234,163 @@ class ElementTestsCreateAsAdminAndLoginAsUser(TestCase):
 
     def test_element_Zn_files(self):
         response = self.c.get(reverse('xasdb1:element', args=['Zn']))
+
+@override_settings(MEDIA_ROOT=TEMPDIR.name)
+class ElementTestsCreateAsAdminAndLogout(TestCase):
+
+    def setUp(self):
+        # let's assume that registering works fine via the view..
+        User.objects.create_superuser(username=USERNAME, password=PASSWORD, email='test@example.com')
+        # populate database with all good xdi files
+        self.c = Client()
+        response = self.c.post(reverse('xasdb1:login'), {'username': USERNAME, 'password': PASSWORD}, follow=True)
+        self.assertRedirects(response, reverse('xasdb1:index'))
+        self.assertContains(response, USERNAME  + ' logged in!')
+        test_dir = join(BASE_DIR, 'xasdb1', 'testdata', 'good')
+        self.xdi_files = os.listdir(test_dir)
+        self.assertTrue(len(self.xdi_files) > 0)
+        
+        for xdi_file in self.xdi_files:
+            test_file = join(BASE_DIR, 'xasdb1', 'testdata', 'good', xdi_file)
+            self.assertTrue(exists(test_file))
+            with open(test_file) as fp:
+                response = self.c.post(reverse('xasdb1:upload'), {'name': 'upload_file', 'upload_file': fp}, follow=True)
+            self.assertRedirects(response, reverse('xasdb1:index'))
+            self.assertContains(response, 'File uploaded')
+        self.assertEqual(len(XASFile.objects.all()), len(self.xdi_files))
+        # logout
+        response = self.c.post(reverse('xasdb1:logout'))
+        self.assertRedirects(response, reverse('xasdb1:index'))
+
+    def test_element_no_files(self):
+        # pretty sure there's no uranium data
+        response = self.c.get(reverse('xasdb1:element', args=['U']))
+
+    def test_element_Fe_files(self):
+        response = self.c.get(reverse('xasdb1:element', args=['Fe']))
+        self.assertContains(response, 'No spectra found for Fe')
+        # let's approve 3 of them and try again
+        for obj in XASFile.objects.filter(atomic_number=26)[::2]:
+            obj.review_status = XASFile.APPROVED
+            obj.save()
+        response = self.c.get(reverse('xasdb1:element', args=['Fe']))
+        #print(f'response: {response.content}')
+        self.assertContains(response, '3 spectra found for Fe')
+
+    def test_element_Zn_files(self):
+        response = self.c.get(reverse('xasdb1:element', args=['Zn']))
         self.assertContains(response, 'No spectra found for Zn')
+        self.assertContains(response, 'No spectra found for Zn')
+
+@override_settings(MEDIA_ROOT=TEMPDIR.name)
+class FileTestsCreateAsAdmin(TestCase):
+
+    def setUp(self):
+        # let's assume that registering works fine via the view..
+        User.objects.create_superuser(username=2*USERNAME, password=2*PASSWORD, email='test@example.com')
+        self.c = Client()
+        response = self.c.post(reverse('xasdb1:login'), {'username': 2*USERNAME, 'password': 2*PASSWORD}, follow=True)
+        self.assertRedirects(response, reverse('xasdb1:index'))
+        self.assertContains(response, 2*USERNAME  + ' logged in!')
+        test_file = join(BASE_DIR, 'xasdb1', 'testdata', 'good', 'fe3c_rt.xdi')
+        self.assertTrue(exists(test_file))
+        with open(test_file) as fp:
+            response = self.c.post(reverse('xasdb1:upload'), {'name': 'upload_file', 'upload_file': fp}, follow=True)
+        self.assertRedirects(response, reverse('xasdb1:index'))
+        self.assertContains(response, 'File uploaded')
+        self.assertEqual(len(XASFile.objects.all()), 1)
+        # logout
+        response = self.c.post(reverse('xasdb1:logout'))
+        self.assertRedirects(response, reverse('xasdb1:index'))
+
+    def test_file_no_login(self):
+        file = XASFile.objects.all()[0]
+        response = self.c.post(reverse('xasdb1:file', args=[file.id]), follow=True)
+        self.assertRedirects(response, reverse('xasdb1:index'))
+        self.assertContains(response, 'The requested file is not accessible')
+        file.review_status = XASFile.APPROVED
+        file.save()
+        response = self.c.post(reverse('xasdb1:file', args=[file.id]), follow=True)
+        self.assertContains(response, f'Spectrum: {file.sample_name}')
+
+    def test_file_login_as_user(self):
+        User.objects.create_user(username=USERNAME, password=PASSWORD)
+        response = self.c.post(reverse('xasdb1:login'), {'username': USERNAME, 'password': PASSWORD}, follow=True)
+        self.assertRedirects(response, reverse('xasdb1:index'))
+        self.assertContains(response, USERNAME  + ' logged in!')
+        file = XASFile.objects.all()[0]
+        response = self.c.post(reverse('xasdb1:file', args=[file.id]), follow=True)
+        self.assertRedirects(response, reverse('xasdb1:index'))
+        self.assertContains(response, 'The requested file is not accessible')
+        file.review_status = XASFile.APPROVED
+        file.save()
+        response = self.c.post(reverse('xasdb1:file', args=[file.id]), follow=True)
+        self.assertContains(response, f'Spectrum: {file.sample_name}')
+
+    def test_file_login_as_admin(self):
+        response = self.c.post(reverse('xasdb1:login'), {'username': 2*USERNAME, 'password': 2*PASSWORD}, follow=True)
+        self.assertRedirects(response, reverse('xasdb1:index'))
+        self.assertContains(response, 2*USERNAME  + ' logged in!')
+        file = XASFile.objects.all()[0]
+        response = self.c.post(reverse('xasdb1:file', args=[file.id]), follow=True)
+        self.assertContains(response, f'Spectrum: {file.sample_name}')
+        file.review_status = XASFile.APPROVED
+        file.save()
+        response = self.c.post(reverse('xasdb1:file', args=[file.id]), follow=True)
+        self.assertContains(response, f'Spectrum: {file.sample_name}')
+
+class FileTestsCreateAsUser(TestCase):
+
+    def setUp(self):
+        # let's assume that registering works fine via the view..
+        User.objects.create_user(username=USERNAME, password=PASSWORD)
+        self.c = Client()
+        response = self.c.post(reverse('xasdb1:login'), {'username': USERNAME, 'password': PASSWORD}, follow=True)
+        self.assertRedirects(response, reverse('xasdb1:index'))
+        self.assertContains(response, USERNAME  + ' logged in!')
+        test_file = join(BASE_DIR, 'xasdb1', 'testdata', 'good', 'fe3c_rt.xdi')
+        self.assertTrue(exists(test_file))
+        with open(test_file) as fp:
+            response = self.c.post(reverse('xasdb1:upload'), {'name': 'upload_file', 'upload_file': fp}, follow=True)
+        self.assertRedirects(response, reverse('xasdb1:index'))
+        self.assertContains(response, 'File uploaded')
+        self.assertEqual(len(XASFile.objects.all()), 1)
+        # logout
+        response = self.c.post(reverse('xasdb1:logout'))
+        self.assertRedirects(response, reverse('xasdb1:index'))
+
+    def test_file_no_login(self):
+        file = XASFile.objects.all()[0]
+        response = self.c.post(reverse('xasdb1:file', args=[file.id]), follow=True)
+        self.assertRedirects(response, reverse('xasdb1:index'))
+        self.assertContains(response, 'The requested file is not accessible')
+        file.review_status = XASFile.APPROVED
+        file.save()
+        response = self.c.post(reverse('xasdb1:file', args=[file.id]), follow=True)
+        self.assertContains(response, f'Spectrum: {file.sample_name}')
+
+    def test_file_login_as_user(self):
+        response = self.c.post(reverse('xasdb1:login'), {'username': USERNAME, 'password': PASSWORD}, follow=True)
+        self.assertRedirects(response, reverse('xasdb1:index'))
+        self.assertContains(response, USERNAME  + ' logged in!')
+        file = XASFile.objects.all()[0]
+        response = self.c.post(reverse('xasdb1:file', args=[file.id]), follow=True)
+        self.assertContains(response, f'Spectrum: {file.sample_name}')
+        file.review_status = XASFile.APPROVED
+        file.save()
+        response = self.c.post(reverse('xasdb1:file', args=[file.id]), follow=True)
+        self.assertContains(response, f'Spectrum: {file.sample_name}')
+
+    def test_file_login_as_admin(self):
+        User.objects.create_superuser(username=2*USERNAME, password=2*PASSWORD, email='test@example.com')
+        response = self.c.post(reverse('xasdb1:login'), {'username': 2*USERNAME, 'password': 2*PASSWORD}, follow=True)
+        self.assertRedirects(response, reverse('xasdb1:index'))
+        self.assertContains(response, 2*USERNAME  + ' logged in!')
+        file = XASFile.objects.all()[0]
+        response = self.c.post(reverse('xasdb1:file', args=[file.id]), follow=True)
+        self.assertContains(response, f'Spectrum: {file.sample_name}')
+        file.review_status = XASFile.APPROVED
+        file.save()
+        response = self.c.post(reverse('xasdb1:file', args=[file.id]), follow=True)
+        self.assertContains(response, f'Spectrum: {file.sample_name}')
+
