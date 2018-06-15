@@ -27,6 +27,12 @@ import os.path
 
 XDI_TMP_DIR = tempfile.TemporaryDirectory()
 
+OPTIONAL_KWARGS = ( \
+        ('sample', 'name'), \
+        ('beamline', 'name'), \
+        ('facility', 'name'), \
+    )
+
 def index(request):
     return render(request, 'xasdb1/index.html')
 
@@ -109,8 +115,11 @@ def upload(request):
             atomic_number = xrl.SymbolToAtomicNumber(element)
             edge = xdi_file.edge.decode('utf-8')
             kwargs = dict()
-            if 'sample' in xdi_file.attrs and 'name' in xdi_file.attrs['sample']:
-                kwargs['sample_name'] = xdi_file.attrs['sample']['name']
+            for kwarg in OPTIONAL_KWARGS:
+                try:
+                    kwargs['_'.join(kwarg)] = xdi_file.attrs[kwarg[0]][kwarg[1]]
+                except KeyError:
+                    pass
 
             xas_file = XASFile(atomic_number=atomic_number, upload_file=value, uploader=request.user, element=element, edge=edge, **kwargs)
             try:

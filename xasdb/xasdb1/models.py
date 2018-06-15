@@ -38,6 +38,8 @@ class XASFile(models.Model):
     uploader = models.ForeignKey(User, on_delete=models.SET_NULL, null=True)
     review_status = models.SmallIntegerField(choices=REVIEW_STATUS_CHOICES, default=PENDING)
     sample_name = models.CharField(max_length=100, default='unknown')
+    beamline_name = models.CharField(max_length=100, default='unknown')
+    facility_name = models.CharField(max_length=100, default='unknown')
 
 class XASArray(models.Model):
     file = models.ForeignKey(XASFile, on_delete=models.CASCADE)
