@@ -339,6 +339,7 @@ class FileTestsCreateAsAdmin(TestCase):
         response = self.c.post(reverse('xasdb1:file', args=[file.id]), follow=True)
         self.assertContains(response, f'Spectrum: {file.sample_name}')
 
+@override_settings(MEDIA_ROOT=TEMPDIR.name)
 class FileTestsCreateAsUser(TestCase):
 
     def setUp(self):
