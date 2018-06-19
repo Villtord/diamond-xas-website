@@ -8,8 +8,17 @@
 {% block content %}
 <p><div>Spectrum: {{file.sample_name}}</div>
 <p>
+         {% if messages %}
+            <ul>
+                {% for message in messages %}
+                <li>{{ message }}</li>
+                {% endfor %}
+            </ul>
+        {% endif %}
 <table><tr>
-		<td><img src="{% url 'xasdb1:file_plot' file.id 'energy' 'mutrans' %}"/></td>
+	{% for plot in plots %}
+		<td><img width=550 src="data:image/png;base64,{{ plot|safe }}"/></td>
+	{% endfor %}
 	</tr>
 </table>
 <br/>

@@ -40,9 +40,20 @@ class XASFile(models.Model):
     sample_name = models.CharField(max_length=100, default='unknown')
     beamline_name = models.CharField(max_length=100, default='unknown')
     facility_name = models.CharField(max_length=100, default='unknown')
+    refer_used = models.BooleanField(default=False)
 
 class XASArray(models.Model):
     file = models.ForeignKey(XASFile, on_delete=models.CASCADE)
     array = models.TextField() # this will be a numpy array turned into JSON...
     unit = models.CharField(max_length=20)
     name = models.CharField(max_length=50)
+
+class XASMode(models.Model):
+    UNKNOWN = -1
+    TRANSMISSION= 0
+    FLUORESCENCE = 1
+    FLUORESCENCE_UNITSTEP = 2
+    MODE_CHOICES = ((UNKNOWN, "Unknown"), (TRANSMISSION, "Transmission"), (FLUORESCENCE, "Fluorescence"), (FLUORESCENCE_UNITSTEP, "Fluorescence, unitstep"))
+
+    file = models.ForeignKey(XASFile, on_delete=models.CASCADE)
+    mode = models.SmallIntegerField(choices=MODE_CHOICES, default=UNKNOWN)

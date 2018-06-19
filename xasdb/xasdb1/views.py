@@ -14,24 +14,21 @@ from django.contrib.auth import logout as _logout
 from django.db.models import Q
 
 from .forms import FormWithFileField, ModelFormWithFileField
-from .models import XASFile
+from .models import XASFile, XASMode, XASArray
+from .utils import process_xdi_file
 
-import xdifile
 import xraylib as xrl
 import tempfile
 import json
 import numpy as np
 import io
+import matplotlib
+matplotlib.use('Agg', warn=False) # avoid Travis-CI DISPLAY exception when using default Qt5 backend
 import matplotlib.pyplot as plt
 import os.path
+import base64
 
 XDI_TMP_DIR = tempfile.TemporaryDirectory()
-
-OPTIONAL_KWARGS = ( \
-        ('sample', 'name'), \
-        ('beamline', 'name'), \
-        ('facility', 'name'), \
-    )
 
 def index(request):
     return render(request, 'xasdb1/index.html')
@@ -109,26 +106,7 @@ def upload(request):
             with open(temp_xdi_file, 'w') as f:
                 contents = value.read().decode('utf-8')
                 f.write(contents)
-            xdi_file = xdifile.XDIFile(filename=temp_xdi_file)
-            value.seek(0)
-            element = xdi_file.element.decode('utf-8')
-            atomic_number = xrl.SymbolToAtomicNumber(element)
-            edge = xdi_file.edge.decode('utf-8')
-            kwargs = dict()
-            for kwarg in OPTIONAL_KWARGS:
-                try:
-                    kwargs['_'.join(kwarg)] = xdi_file.attrs[kwarg[0]][kwarg[1]]
-                except KeyError:
-                    pass
-
-            xas_file = XASFile(atomic_number=atomic_number, upload_file=value, uploader=request.user, element=element, edge=edge, **kwargs)
-            try:
-                xas_file.save()
-                # add arrays
-                for name, unit in zip(xdi_file.array_labels, xdi_file.array_units):
-                    xas_file.xasarray_set.create(name=name, unit=unit, array=json.dumps(getattr(xdi_file, name).tolist()))
-            except Exception as e:
-                print('form.save() exception: {}'.format(e))
+            process_xdi_file(temp_xdi_file, request)
             messages.success(request, 'File uploaded')
             return redirect('xasdb1:index')
     else:
@@ -147,13 +125,48 @@ def file(request, file_id):
         messages.error(request, 'The requested file is not accessible')
         return redirect('xasdb1:index')
 
-    return render(request, 'xasdb1/file.html', {'file' : file})
+
+    # get modes
+    file = XASFile.objects.get(id=file_id)
+    modes = file.xasmode_set.all()
+    plots = []
+
+    if len(modes) == 0:
+        messages.error(request, 'No modes found')
+    else:
+        if len(modes) > 1:
+            print('Warning: more than one mode detected. Using first mode!')
+        mode = modes[0].mode
+        if mode == XASMode.TRANSMISSION:
+            try:
+                energy = np.array(json.loads(file.xasarray_set.get(name='energy').array))
+                i0 = np.array(json.loads(file.xasarray_set.get(name='i0').array))
+                itrans = np.array(json.loads(file.xasarray_set.get(name='itrans').array))
+                mutrans = -np.log(itrans/i0)
+            except Exception as e:
+                messages.error(request, 'Could not extract data from transmission spectrum: ' + str(e))
+        else: # assume fluorescence for now...
+            try:
+                energy = np.array(json.loads(file.xasarray_set.get(name='energy').array))
+                i0 = np.array(json.loads(file.xasarray_set.get(name='i0').array))
+                ifluor = np.array(json.loads(file.xasarray_set.get(name='ifluor').array))
+                mutrans = ifluor/i0
+            except Exception as e:
+                messages.error(request, 'Could not extract data from fluorescence spectrum: ' + str(e))
+
+        if len(messages.get_messages(request)) == 0:
+            murefer = None
+            try:
+                irefer = np.array(json.loads(file.xasarray_set.get(name='irefer').array))
+                murefer = -np.log(irefer/itrans)
+            except:
+                pass
+            plots.append(_file_plot(energy, mutrans, "Energy (eV)", "Raw XAFS"))
+
+    return render(request, 'xasdb1/file.html', {'file' : file, 'plots': plots})
     
 
-def file_plot(request, file_id, xaxis_name, yaxis_name):
-    file = XASFile.objects.get(id=file_id)
-    xaxis = np.array(json.loads(file.xasarray_set.get(name = xaxis_name).array))
-    yaxis = np.array(json.loads(file.xasarray_set.get(name = yaxis_name).array))
+def _file_plot(xaxis, yaxis, xaxis_name, yaxis_name):
     fig = plt.figure()
     ax = fig.add_subplot(111)
     ax.set_xlabel(xaxis_name) # TODO: unit
@@ -164,5 +177,5 @@ def file_plot(request, file_id, xaxis_name, yaxis_name):
     plt.close()
     plt_bytes = buf.getvalue()
     buf.close()
-    return HttpResponse(plt_bytes, content_type="image/png")
+    return str(base64.b64encode(plt_bytes), encoding='utf-8')
 
