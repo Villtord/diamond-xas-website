@@ -63,6 +63,7 @@ TEMPLATES = [
                 'django.template.context_processors.request',
                 'django.contrib.auth.context_processors.auth',
                 'django.contrib.messages.context_processors.messages',
+                'django.template.context_processors.media',
             ],
         },
     },
@@ -122,3 +123,8 @@ STATIC_URL = '/static/'
 
 # allow inactive users
 AUTHENTICATION_BACKENDS = ['django.contrib.auth.backends.AllowAllUsersModelBackend']
+
+import os.path
+MEDIA_URL = '/media/'
+ABSOLUTE_PATH = lambda x: os.path.join(os.path.abspath(os.path.dirname(__file__)), '..', x)
+MEDIA_ROOT = ABSOLUTE_PATH('media/')

@@ -22,4 +22,43 @@
 	</tr>
 </table>
 <br/>
+
+<table>
+<tr>
+	<td colspan=2> <hr> </td>
+</tr>
+<tr>
+	<td width=25%> Original Data File: </td>
+	<td> <a href="{{ file.upload_file.url }}">{{ file.name }}</a></td>
+</tr>
+<tr>
+	<td>Absorption Edge:</td>
+	<td><a href="{% url 'xasdb1:element' file.element %}">{{ file.element }}</a> {{file.edge}} edge</td>
+</tr>
+<tr>
+	<td>Sample Name:</td>
+	<td>{{file.sample_name}}</td>
+</tr>
+<tr>
+	<td>Sample Preparation:</td>
+	<td>{{file.sample_prep}}</td>
+</tr>
+<tr>
+	<td>Beamline:</td>
+	<td>{{ file.beamline_name }} @ {{ file.facility_name }}</td>
+</tr>
+<tr>
+	<td>Mono d-spacing:</td>
+	<td>{{ file.mono_d_spacing }} &#8491; ({{ file.mono_name }})</td>
+</tr>
+<tr>
+	<td>Date measured:</td>
+	<td>{{ file.scan_start_time }}</td>
+</tr>
+<tr>
+	<td>Date uploaded:</td>
+	<td>{{ file.upload_timestamp }}, {{ file.uploader.first_name }} {{ file.uploader.last_name }} ({{ file.uploader.email }})</td>
+</tr>
+
+</table>
 {% endblock %}
