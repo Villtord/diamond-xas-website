@@ -4,7 +4,6 @@ from django.urls import reverse
 
 from django.contrib.auth.decorators import login_required
 from django.contrib import messages
-from django.contrib.auth.forms import UserCreationForm
 from django.contrib.auth.forms import AuthenticationForm
 
 from django.contrib.auth import authenticate
@@ -13,7 +12,7 @@ from django.contrib.auth import logout as _logout
 
 from django.db.models import Q
 
-from .forms import FormWithFileField, ModelFormWithFileField
+from .forms import FormWithFileField, ModelFormWithFileField, XASDBUserCreationForm
 from .models import XASFile, XASMode, XASArray
 from .utils import process_xdi_file
 
@@ -35,13 +34,13 @@ def index(request):
 
 def register(request):
     if request.method == 'POST':
-        f = UserCreationForm(request.POST)
+        f = XASDBUserCreationForm(request.POST)
         if f.is_valid():
             f.save()
             messages.success(request, 'Account created successfully')
             return redirect('xasdb1:index')
     else:
-        f = UserCreationForm()
+        f = XASDBUserCreationForm()
 
     return render(request, 'xasdb1/register.html', {'form': f})
 

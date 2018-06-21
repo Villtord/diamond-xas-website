@@ -12,6 +12,9 @@ import os
 
 USERNAME = 'jpwqehfpfewpfhpfweq'
 PASSWORD = 'rtkhnwoehfongnrgekrg'
+FIRST_NAME = 'John'
+LAST_NAME = 'Doe'
+EMAIL = 'John.Doe@diamond.ac.uk'
 
 TEMPDIR = tempfile.TemporaryDirectory()
 
@@ -28,7 +31,7 @@ class RegisterTests(TestCase):
 
     def test_success_register_from_view(self):
         c = Client()
-        response = c.post(reverse('xasdb1:register'), {'username': USERNAME, 'password1': PASSWORD, 'password2': PASSWORD}, follow=True)
+        response = c.post(reverse('xasdb1:register'), {'username': USERNAME, 'password1': PASSWORD, 'password2': PASSWORD, 'first_name': FIRST_NAME, 'last_name': LAST_NAME, 'email': EMAIL}, follow=True)
         self.assertRedirects(response, reverse('xasdb1:index'))
         self.assertContains(response, 'Account created successfully')
 
@@ -53,7 +56,7 @@ class LoginTests(TestCase):
 
     def test_success_login_from_view(self):
         c = Client()
-        response = c.post(reverse('xasdb1:register'), {'username': USERNAME, 'password1': PASSWORD, 'password2': PASSWORD}, follow=True)
+        response = c.post(reverse('xasdb1:register'), {'username': USERNAME, 'password1': PASSWORD, 'password2': PASSWORD, 'first_name': FIRST_NAME, 'last_name': LAST_NAME, 'email': EMAIL}, follow=True)
         self.assertRedirects(response, reverse('xasdb1:index'))
         self.assertContains(response, 'Account created successfully')
         response = c.post(reverse('xasdb1:login'), {'username': USERNAME, 'password': PASSWORD}, follow=True)
@@ -396,11 +399,11 @@ class FileTestsCreateAsUser(TestCase):
         self.assertContains(response, f'Spectrum: {file.sample_name}')
 
 @override_settings(MEDIA_ROOT=TEMPDIR.name)
-class FileTestsCheckPlots(TestCase):
+class FileTestsCheckContents(TestCase):
 
     def setUp(self):
         # let's assume that registering works fine via the view..
-        self.user = User.objects.create_user(username=USERNAME, password=PASSWORD)
+        self.user = User.objects.create_user(username=USERNAME, password=PASSWORD, first_name=FIRST_NAME, last_name=LAST_NAME, email=EMAIL)
         # populate database with all good xdi files
         self.c = Client()
         response = self.c.post(reverse('xasdb1:login'), {'username': USERNAME, 'password': PASSWORD}, follow=True)
@@ -419,8 +422,11 @@ class FileTestsCheckPlots(TestCase):
             self.assertContains(response, 'File uploaded')
         self.assertEqual(len(XASFile.objects.all()), len(self.xdi_files))
 
-    def test_plot_presence(self):
+    def test_contents_presence(self):
         files = XASFile.objects.all()
         for file in files:
+            print(f"{file.upload_file.name}")
             response = self.c.post(reverse('xasdb1:file', args=[file.id]), follow=True)
             self.assertContains(response, 'data:image/png;base64', count=1)
+            self.assertContains(response, f'{FIRST_NAME} {LAST_NAME} ({EMAIL})')
+            # self.assertNotContains(response, 'unknown')
