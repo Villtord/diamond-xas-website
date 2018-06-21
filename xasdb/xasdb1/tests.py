@@ -395,3 +395,32 @@ class FileTestsCreateAsUser(TestCase):
         response = self.c.post(reverse('xasdb1:file', args=[file.id]), follow=True)
         self.assertContains(response, f'Spectrum: {file.sample_name}')
 
+@override_settings(MEDIA_ROOT=TEMPDIR.name)
+class FileTestsCheckPlots(TestCase):
+
+    def setUp(self):
+        # let's assume that registering works fine via the view..
+        self.user = User.objects.create_user(username=USERNAME, password=PASSWORD)
+        # populate database with all good xdi files
+        self.c = Client()
+        response = self.c.post(reverse('xasdb1:login'), {'username': USERNAME, 'password': PASSWORD}, follow=True)
+        self.assertRedirects(response, reverse('xasdb1:index'))
+        self.assertContains(response, USERNAME  + ' logged in!')
+        test_dir = join(BASE_DIR, 'xasdb1', 'testdata', 'good')
+        self.xdi_files = os.listdir(test_dir)
+        self.assertTrue(len(self.xdi_files) > 0)
+        
+        for xdi_file in self.xdi_files:
+            test_file = join(BASE_DIR, 'xasdb1', 'testdata', 'good', xdi_file)
+            self.assertTrue(exists(test_file))
+            with open(test_file) as fp:
+                response = self.c.post(reverse('xasdb1:upload'), {'name': 'upload_file', 'upload_file': fp}, follow=True)
+            self.assertRedirects(response, reverse('xasdb1:index'))
+            self.assertContains(response, 'File uploaded')
+        self.assertEqual(len(XASFile.objects.all()), len(self.xdi_files))
+
+    def test_plot_presence(self):
+        files = XASFile.objects.all()
+        for file in files:
+            response = self.c.post(reverse('xasdb1:file', args=[file.id]), follow=True)
+            self.assertContains(response, 'data:image/png;base64', count=1)

@@ -2,12 +2,16 @@ import json
 import xdifile
 import xraylib as xrl
 import numpy as np
+from datetime import datetime, timezone
 from .models import XASFile, XASMode
 
 OPTIONAL_KWARGS = ( \
         ('sample', 'name'), \
+        ('sample', 'prep'), \
         ('beamline', 'name'), \
         ('facility', 'name'), \
+        ('mono', 'name'), \
+        ('mono', 'd_spacing'), \
     )
 
 def process_xdi_file(temp_xdi_file, request):
@@ -23,6 +27,11 @@ def process_xdi_file(temp_xdi_file, request):
             kwargs['_'.join(kwarg)] = xdi_file.attrs[kwarg[0]][kwarg[1]]
         except KeyError:
             pass
+
+    try:
+        kwargs['scan_start_time'] = isotime2datetime(xdi_file.attrs['scan']['start_time'])
+    except KeyError:
+        pass
 
     try:
         modes = []
@@ -88,3 +97,15 @@ def process_xdi_file(temp_xdi_file, request):
 
     except Exception:
         raise
+
+
+def isotime2datetime(isotime):
+    sdate, stime = isotime.split('T')
+    syear, smon, sday = [int(x) for x in sdate.split('-')]
+    sfrac = '0'
+    if '.' in stime:
+        stime, sfrac = stime.split('.')
+    shour, smin, ssec  = [int(x) for x in stime.split(':')]
+    susec = int(1e6*float('.%s' % sfrac))
+
+    return datetime(syear, smon, sday, shour, smin, ssec, susec, timezone.utc)

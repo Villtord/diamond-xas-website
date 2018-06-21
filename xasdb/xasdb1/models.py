@@ -1,6 +1,7 @@
 from django.db import models
 from django.contrib.auth.models import User
 from django.core.exceptions import ValidationError
+import django
 
 import xdifile
 import tempfile
@@ -38,9 +39,18 @@ class XASFile(models.Model):
     uploader = models.ForeignKey(User, on_delete=models.SET_NULL, null=True)
     review_status = models.SmallIntegerField(choices=REVIEW_STATUS_CHOICES, default=PENDING)
     sample_name = models.CharField(max_length=100, default='unknown')
+    sample_prep = models.CharField(max_length=1000, default='unknown')
     beamline_name = models.CharField(max_length=100, default='unknown')
     facility_name = models.CharField(max_length=100, default='unknown')
+    mono_name = models.CharField(max_length=30, default='unknown')
+    mono_d_spacing = models.CharField(max_length=30, default='unknown')
+    scan_start_time = models.DateTimeField(default=django.utils.timezone.now)
     refer_used = models.BooleanField(default=False)
+
+    
+    @property
+    def name(self):
+        return os.path.basename(self.upload_file.name)
 
 class XASArray(models.Model):
     file = models.ForeignKey(XASFile, on_delete=models.CASCADE)
