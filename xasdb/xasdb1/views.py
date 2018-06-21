@@ -105,9 +105,9 @@ def upload(request):
             with open(temp_xdi_file, 'w') as f:
                 contents = value.read().decode('utf-8')
                 f.write(contents)
-            process_xdi_file(temp_xdi_file, request)
+            xas_file = process_xdi_file(temp_xdi_file, request)
             messages.success(request, 'File uploaded')
-            return redirect('xasdb1:index')
+            return redirect('xasdb1:file', xas_file.id)
     else:
         form = ModelFormWithFileField()
     return render(request, 'xasdb1/upload.html', {'form': form})
