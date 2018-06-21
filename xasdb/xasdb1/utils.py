@@ -94,7 +94,7 @@ def process_xdi_file(temp_xdi_file, request):
         # add arrays
         for name, array in arrays.items():
             xas_file.xasarray_set.create(name=name, array=json.dumps(array.tolist()))
-
+        return xas_file
     except Exception:
         raise
 
