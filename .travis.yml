@@ -9,7 +9,7 @@ install:
         - conda config --set always_yes yes
         - conda update -q conda
         - conda install django matplotlib
-        - conda install -c conda-forge xraylib
+        - conda install -c conda-forge xraylib habanero
         # install xdi...
         - pushd $HOME
         - git clone -b XDI-autotools https://github.com/tschoonj/XAS-Data-Interchange

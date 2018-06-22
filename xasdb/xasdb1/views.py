@@ -153,7 +153,8 @@ def file(request, file_id):
             except Exception as e:
                 messages.error(request, 'Could not extract data from fluorescence spectrum: ' + str(e))
 
-        if len(messages.get_messages(request)) == 0:
+        
+        if len(list(filter(lambda message: message.level_tag != 'success', messages.get_messages(request)))) == 0:
             murefer = None
             try:
                 irefer = np.array(json.loads(file.xasarray_set.get(name='irefer').array))

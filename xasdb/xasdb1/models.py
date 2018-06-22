@@ -6,8 +6,18 @@ import django
 import xdifile
 import tempfile
 import os.path
+from habanero import Crossref
 
 XDI_TMP_DIR = tempfile.TemporaryDirectory()
+
+def doi_valid(value):
+    try:
+        cr = Crossref(mailto = "Tom.Schoonjans@diamond.ac.uk") # necessary to end up in the polite pool
+        work = cr.works(ids=value)
+        work['message']['title']
+    except Exception as e:
+        raise ValidationError(f"Invalid DOI: {e}")
+
 
 def xdi_valid(value):
     temp_xdi_file = os.path.join(XDI_TMP_DIR.name, value.name)
@@ -32,6 +42,7 @@ class XASFile(models.Model):
 
 
     upload_file = models.FileField(upload_to='uploads/%Y/%m/%d/', validators=[xdi_valid])
+    upload_file_doi = models.CharField('Citation DOI', max_length=256, default='', validators=[doi_valid])
     upload_timestamp = models.DateTimeField('date published', auto_now_add=True)
     atomic_number = models.IntegerField(default=0)
     element = models.CharField(max_length=3, default='')
