@@ -1,4 +1,4 @@
-from django.forms import (Form, FileField, ModelForm, CharField, EmailField)
+from django.forms import (Form, FileField, ModelForm, CharField, EmailField, TextInput)
 from django.contrib.auth.forms import UserCreationForm
 from django.contrib.auth.models import User
 from .models import XASFile
@@ -9,7 +9,10 @@ class FormWithFileField(Form):
 class ModelFormWithFileField(ModelForm):
     class Meta:
         model = XASFile
-        fields = ['upload_file']
+        fields = ['upload_file', 'upload_file_doi']
+        widgets = {
+                "upload_file_doi": TextInput(attrs={'onkeyup': "getDOI(this.value)"})
+        }
 
 class XASDBUserCreationForm(UserCreationForm):
     first_name = CharField(max_length=100, min_length=1)

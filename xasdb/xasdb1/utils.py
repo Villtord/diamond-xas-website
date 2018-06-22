@@ -85,7 +85,7 @@ def process_xdi_file(temp_xdi_file, request):
             refer_used = True
             arrays['irefer'] = xdi_file.i2
 
-        xas_file = XASFile(atomic_number=atomic_number, upload_file=value, uploader=request.user, element=element, edge=edge, refer_used=refer_used, **kwargs)
+        xas_file = XASFile(atomic_number=atomic_number, upload_file=value, upload_file_doi=request.POST['upload_file_doi'], uploader=request.user, element=element, edge=edge, refer_used=refer_used, **kwargs)
         xas_file.save()
 
         for mode in set(modes):
