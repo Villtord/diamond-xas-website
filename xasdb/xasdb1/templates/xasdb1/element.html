@@ -9,14 +9,17 @@
 
 <div id='spectra'>
 <hr>
+<p>
 {% if files|length == 0 %}
-	No spectra found for {{element}}.
+<h2>No spectra found for {{element}}.</h2>
 {% else %}
+	<h2>
 	{% if files|length == 1 %}
 		1 spectrum found for {{element}}
 	{% else %}
 		{{ files|length }} spectra found for {{element}}
 	{% endif %}
+	</h2>
 	<table cellspacing=5 cellpadding=2>
 		<tr>
 			<th>Name</th>
@@ -32,6 +35,7 @@
 		{% endfor %}
 	</table>
 {% endif %}
+</p>
 </div>
 {% endblock %}
 

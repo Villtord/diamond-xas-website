@@ -1,0 +1,28 @@
+
+
+#mendeljevtable {
+	empty-cells:hide;
+	border-collapse:separate;
+}
+
+.mendeljev-cell {
+	width:50px;
+	text-align:center;
+	vertical-align:middle;
+}
+
+.mendeljev-anchor {
+	display:block;
+	text-decoration:none;
+}
+
+.mendeljev-anchor:hover {
+	display:block;
+	text-decoration:none;
+}
+
+#spectra hr {
+  height: 2px;
+  background-color: #444A95;
+  color: #444A95;
+}
