@@ -12,7 +12,7 @@ from django.contrib.auth import logout as _logout
 
 from django.db.models import Q
 
-from .forms import FormWithFileField, ModelFormWithFileField, XASDBUserCreationForm
+from .forms import FormWithFileField, ModelFormWithFileField, XASDBUserCreationForm, XASUploadAuxDataFormSet
 from .models import XASFile, XASMode, XASArray
 from .utils import process_xdi_file
 
@@ -26,6 +26,8 @@ matplotlib.use('Agg', warn=False) # avoid Travis-CI DISPLAY exception when using
 import matplotlib.pyplot as plt
 import os.path
 import base64
+from habanero import Crossref
+import traceback
 
 XDI_TMP_DIR = tempfile.TemporaryDirectory()
 
@@ -96,9 +98,16 @@ def element(request, element_id):
 
 @login_required(login_url='xasdb1:login')
 def upload(request):
+    #print(f"request.method: {request.method}")
     if request.method == 'POST':
         form = ModelFormWithFileField(request.POST, request.FILES)
-        if form.is_valid():
+        upload_aux_formset = XASUploadAuxDataFormSet(request.POST, request.FILES)
+        form_is_valid = form.is_valid()
+        upload_aux_formset_is_valid = upload_aux_formset.is_valid()
+        #print(f"form_is_valid: {form_is_valid}")
+        #print(f"upload_aux_formset_is_valid: {upload_aux_formset_is_valid}")
+        if form_is_valid and upload_aux_formset_is_valid:
+            #print("upload::POST -> is_valid")
             value = request.FILES['upload_file']
             value.seek(0)
             temp_xdi_file = os.path.join(XDI_TMP_DIR.name, value.name)
@@ -106,11 +115,25 @@ def upload(request):
                 contents = value.read().decode('utf-8')
                 f.write(contents)
             xas_file = process_xdi_file(temp_xdi_file, request)
+            # add auxiliary data
+            for index, upload_aux_form in enumerate(upload_aux_formset):
+                #print(f"index: {index}")
+                try:
+                    xas_file.xasuploadauxdata_set.create(aux_description=upload_aux_form.cleaned_data['aux_description'], aux_file=upload_aux_form.cleaned_data['aux_file'])
+                except:
+                    pass
             messages.success(request, 'File uploaded')
             return redirect('xasdb1:file', xas_file.id)
     else:
         form = ModelFormWithFileField()
-    return render(request, 'xasdb1/upload.html', {'form': form})
+        data = {
+            'form-TOTAL_FORMS': '1',
+            'form-INITIAL_FORMS': '0',
+            'form-MAX_NUM_FORMS': '10',
+            'form-MIN_NUM_FORMS': '0',
+        }
+        upload_aux_formset = XASUploadAuxDataFormSet(data, initial=[{'aux_description': "", 'aux_file': ""}])
+    return render(request, 'xasdb1/upload.html', {'form': form, 'upload_aux_formset': upload_aux_formset})
 
 def file(request, file_id):
     # check first if this should be visible for the current user
@@ -163,7 +186,37 @@ def file(request, file_id):
                 pass
             plots.append(_file_plot(energy, mutrans, "Energy (eV)", "Raw XAFS"))
 
-    return render(request, 'xasdb1/file.html', {'file' : file, 'plots': plots})
+    # try getting the doi information
+    try:
+        # this should probably get cached -> TODO
+        cr = Crossref(mailto = "Tom.Schoonjans@diamond.ac.uk") # necessary to end up in the polite pool
+        doi = {}
+        work = cr.works(ids=file.upload_file_doi)
+        doi['title'] = work['message']['title'][0]
+        doi['url'] = work['message']['URL']
+        doi['year'] = work['message']['published-print']['date-parts'][0][0]
+        doi['journal'] = work['message']['short-container-title'][0]
+        doi['ncited'] = work['message']['is-referenced-by-count']
+        authorlist = ""
+        for index, author in enumerate(work['message']['author']):
+            givens = author['given'].split()
+            for given in givens:
+                authorlist += "{}. ".format(given[0])
+            family = author['family']
+            authorlist += family
+            if len(work['message']['author']) > 1:
+                    if index == len(work['message']['author']) - 2:
+                        authorlist += ' and '
+                    elif index != len(work['message']['author']) - 1:
+                        authorlist += ', '
+                        
+        doi['author'] = authorlist
+    except Exception as e:
+        print(f'file.upload_file_doi: {file.upload_file_doi}')
+        traceback.print_exc()
+        doi = None
+
+    return render(request, 'xasdb1/file.html', {'file' : file, 'plots': plots, 'aux' : file.xasuploadauxdata_set.all(), 'doi' : doi})
     
 
 def _file_plot(xaxis, yaxis, xaxis_name, yaxis_name):

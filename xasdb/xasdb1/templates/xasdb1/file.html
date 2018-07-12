@@ -21,14 +21,12 @@
 	{% endfor %}
 	</tr>
 </table>
+
 <br/>
 
-<table>
+<table class="file-table-main">
 <tr>
-	<td colspan=2> <hr> </td>
-</tr>
-<tr>
-	<td width=25%> Original Data File: </td>
+	<td> Original Data File: </td>
 	<td> <a href="{{ file.upload_file.url }}">{{ file.name }}</a></td>
 </tr>
 <tr>
@@ -59,6 +57,28 @@
 	<td>Date uploaded:</td>
 	<td>{{ file.upload_timestamp }}, {{ file.uploader.first_name }} {{ file.uploader.last_name }} ({{ file.uploader.email }})</td>
 </tr>
+{% if doi %}
+<tr>
+	<td>Citation:</td>
+	<td><a href="{{ doi.url }}">{{doi.author}}. {{ doi.title }}, <i>{{doi.journal}}</i> ({{doi.year}}). Times cited: {{doi.ncited}}</a></td>
+</tr>
+{% endif %}
 
 </table>
+
+{% if aux %}
+<br/>
+<table class="file-table-aux">
+<tr>
+	<th>Auxiliary data</th>
+	<th>Filename</th>
+</tr>
+{% for data in aux %}
+<tr>
+	<td>{{ data.aux_description }}</td>
+	<td> <a href="{{ data.aux_file.url }}">{{ data.name }}</a></td>
+</tr>
+{% endfor %}
+</table>
+{% endif %}
 {% endblock %}

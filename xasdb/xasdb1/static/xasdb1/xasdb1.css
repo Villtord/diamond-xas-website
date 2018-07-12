@@ -22,7 +22,26 @@
 }
 
 #spectra hr {
-  height: 2px;
-  background-color: #444A95;
-  color: #444A95;
+	height: 2px;
+	background-color: #444A95;
+	color: #444A95;
 }
+
+.upload_aux_formset_error {
+	color: red;
+	display: inline;
+}
+
+.file-table-main, .file-table-aux {
+	table-layout:fixed;
+	width: 800px;
+}
+
+.file-table-aux th:first-child, .file-table-main td:first-child {
+	width: 25% 
+}
+
+th {
+	color: #E5E5E5;
+}
+

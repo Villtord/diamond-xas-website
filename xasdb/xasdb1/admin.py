@@ -1,6 +1,6 @@
 from django.contrib import admin
 
-from .models import XASFile, XASArray, XASMode
+from .models import XASFile, XASArray, XASMode, XASUploadAuxData
 
 @admin.register(XASFile)
 class XASFileAdmin(admin.ModelAdmin):
@@ -14,4 +14,9 @@ class XASArrayAdmin(admin.ModelAdmin):
 @admin.register(XASMode)
 class XASModeAdmin(admin.ModelAdmin):
     fields = ('file', 'mode')
+    readonly_fields = fields
+
+@admin.register(XASUploadAuxData)
+class XASUploadAuxDataAdmin(admin.ModelAdmin):
+    fields = ('aux_description', 'aux_file')
     readonly_fields = fields

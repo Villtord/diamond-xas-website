@@ -58,7 +58,6 @@ class XASFile(models.Model):
     scan_start_time = models.DateTimeField(default=django.utils.timezone.now)
     refer_used = models.BooleanField(default=False)
 
-    
     @property
     def name(self):
         return os.path.basename(self.upload_file.name)
@@ -78,3 +77,12 @@ class XASMode(models.Model):
 
     file = models.ForeignKey(XASFile, on_delete=models.CASCADE)
     mode = models.SmallIntegerField(choices=MODE_CHOICES, default=UNKNOWN)
+
+class XASUploadAuxData(models.Model):
+    aux_description = models.CharField('Description', max_length=256, default='', blank=True)
+    aux_file = models.FileField(upload_to='uploads/%Y/%m/%d/', blank=True)
+    file = models.ForeignKey(XASFile, on_delete=models.CASCADE)
+
+    @property
+    def name(self):
+        return os.path.basename(self.aux_file.name)
