@@ -4,6 +4,7 @@ import xraylib as xrl
 import numpy as np
 from datetime import datetime, timezone
 from .models import XASFile, XASMode
+import os.path
 
 OPTIONAL_KWARGS = ( \
         ('sample', 'name'), \
@@ -33,9 +34,16 @@ def process_xdi_file(temp_xdi_file, request):
     except KeyError:
         pass
 
+    if 'sample_name' not in kwargs:
+        kwargs['sample_name'] = os.path.splitext(value.name)[0]
+
     try:
         modes = []
         arrays = {'energy': xdi_file.energy}
+
+        if hasattr(xdi_file, 'xmu'):
+            arrays['xmu'] = xdi_file.xmu
+            modes.append(XASMode.XMU)
 
         if hasattr(xdi_file, 'i0'):
             arrays['i0'] = xdi_file.i0

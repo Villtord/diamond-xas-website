@@ -159,6 +159,7 @@ def file(request, file_id):
         if len(modes) > 1:
             print('Warning: more than one mode detected. Using first mode!')
         mode = modes[0].mode
+        yaxis_title = "Raw XAFS"
         if mode == XASMode.TRANSMISSION:
             try:
                 energy = np.array(json.loads(file.xasarray_set.get(name='energy').array))
@@ -167,7 +168,7 @@ def file(request, file_id):
                 mutrans = -np.log(itrans/i0)
             except Exception as e:
                 messages.error(request, 'Could not extract data from transmission spectrum: ' + str(e))
-        else: # assume fluorescence for now...
+        elif mode == XASMode.FLUORESCENCE or mode == XASMode.FLUORESCENCE_UNITSTEP:
             try:
                 energy = np.array(json.loads(file.xasarray_set.get(name='energy').array))
                 i0 = np.array(json.loads(file.xasarray_set.get(name='i0').array))
@@ -175,6 +176,15 @@ def file(request, file_id):
                 mutrans = ifluor/i0
             except Exception as e:
                 messages.error(request, 'Could not extract data from fluorescence spectrum: ' + str(e))
+        elif mode == XASMode.XMU:
+            try:
+                energy = np.array(json.loads(file.xasarray_set.get(name='energy').array))
+                mutrans = np.array(json.loads(file.xasarray_set.get(name='xmu').array))
+                yaxis_title = "Normalized absorption spectrum"
+            except Exception as e:
+                messages.error(request, 'Could not extract data from normalized absorption spectrum: ' + str(e))
+        else:
+            messages.error(request, 'Unsupported mode detected!')
 
         
         if len(list(filter(lambda message: message.level_tag != 'success', messages.get_messages(request)))) == 0:
@@ -184,7 +194,7 @@ def file(request, file_id):
                 murefer = -np.log(irefer/itrans)
             except:
                 pass
-            plots.append(_file_plot(energy, mutrans, "Energy (eV)", "Raw XAFS"))
+            plots.append(_file_plot(energy, mutrans, "Energy (eV)", yaxis_title))
 
     # try getting the doi information
     try:
