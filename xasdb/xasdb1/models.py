@@ -73,7 +73,8 @@ class XASMode(models.Model):
     TRANSMISSION= 0
     FLUORESCENCE = 1
     FLUORESCENCE_UNITSTEP = 2
-    MODE_CHOICES = ((UNKNOWN, "Unknown"), (TRANSMISSION, "Transmission"), (FLUORESCENCE, "Fluorescence"), (FLUORESCENCE_UNITSTEP, "Fluorescence, unitstep"))
+    XMU = 3
+    MODE_CHOICES = ((UNKNOWN, "Unknown"), (TRANSMISSION, "Transmission"), (FLUORESCENCE, "Fluorescence"), (FLUORESCENCE_UNITSTEP, "Fluorescence, unitstep"), (XMU, "Normalized absorption spectrum"))
 
     file = models.ForeignKey(XASFile, on_delete=models.CASCADE)
     mode = models.SmallIntegerField(choices=MODE_CHOICES, default=UNKNOWN)
