@@ -110,7 +110,7 @@ class UploadTests(TestCase):
         self.assertContains(response, USERNAME  + ' logged in!')
         response = c.get(reverse('xasdb1:upload'))
         #print(f'response: {response.content}')
-        self.assertContains(response, '<input type="hidden" name="form-TOTAL_FORMS" value="1" id="id_form-TOTAL_FORMS" /><input type="hidden" name="form-INITIAL_FORMS" value="0" id="id_form-INITIAL_FORMS" /><input type="hidden" name="form-MIN_NUM_FORMS" value="0" id="id_form-MIN_NUM_FORMS" /><input type="hidden" name="form-MAX_NUM_FORMS" value="10" id="id_form-MAX_NUM_FORMS" />\n\t\t\n\t\t\t<div class="upload_aux_formset">\n\t\t\t\tDescription\n\t\t\t\t<input type="text" name="form-0-aux_description" maxlength="256" id="id_form-0-aux_description" />\n\t\t\t\t\n\n\t\t\t\t<input type="file" name="form-0-aux_file" id="id_form-0-aux_file" />\n\t\t\t\t\n\t\t\t</div>\n\t\t\n\t\t\n\t\t<br/>\n\t\t<input type="submit" name="submit" value="Upload!" />')
+        self.assertContains(response, '<input type="hidden" name="form-TOTAL_FORMS" value="1" id="id_form-TOTAL_FORMS"><input type="hidden" name="form-INITIAL_FORMS" value="0" id="id_form-INITIAL_FORMS"><input type="hidden" name="form-MIN_NUM_FORMS" value="0" id="id_form-MIN_NUM_FORMS"><input type="hidden" name="form-MAX_NUM_FORMS" value="10" id="id_form-MAX_NUM_FORMS">\n\t\t\n\t\t\t<div class="upload_aux_formset">\n\t\t\t\tDescription\n\t\t\t\t<input type="text" name="form-0-aux_description" maxlength="256" id="id_form-0-aux_description">\n\t\t\t\t\n\n\t\t\t\t<input type="file" name="form-0-aux_file" id="id_form-0-aux_file">\n\t\t\t\t\n\t\t\t</div>\n\t\t\n\t\t\n\t\t<br/>\n\t\t<input type="submit" name="submit" value="Upload!">')
 
     def test_good_file_bad_doi(self):
         c = Client()
