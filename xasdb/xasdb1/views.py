@@ -20,10 +20,11 @@ import xraylib as xrl
 import tempfile
 import json
 import numpy as np
-import io
-import matplotlib
-matplotlib.use('Agg', warn=False) # avoid Travis-CI DISPLAY exception when using default Qt5 backend
-import matplotlib.pyplot as plt
+
+from bokeh.plotting import figure, output_file, show 
+from bokeh.embed import components
+from bokeh import __version__ as bokeh_version
+
 import os.path
 import base64
 from habanero import Crossref
@@ -226,19 +227,12 @@ def file(request, file_id):
         traceback.print_exc()
         doi = None
 
-    return render(request, 'xasdb1/file.html', {'file' : file, 'plots': plots, 'aux' : file.xasuploadauxdata_set.all(), 'doi' : doi})
+    return render(request, 'xasdb1/file.html', {'file' : file, 'plots': plots, 'aux' : file.xasuploadauxdata_set.all(), 'doi' : doi, 'bokeh_version': bokeh_version})
     
 
 def _file_plot(xaxis, yaxis, xaxis_name, yaxis_name):
-    fig = plt.figure()
-    ax = fig.add_subplot(111)
-    ax.set_xlabel(xaxis_name) # TODO: unit
-    ax.set_ylabel(yaxis_name)
-    ax.plot(xaxis, yaxis)
-    buf = io.BytesIO()
-    plt.savefig(buf, format='png')
-    plt.close()
-    plt_bytes = buf.getvalue()
-    buf.close()
-    return str(base64.b64encode(plt_bytes), encoding='utf-8')
+    plot = figure(x_axis_label = xaxis_name, y_axis_label = yaxis_name, plot_width = 500, plot_height = 400, tooltips = [('(x, y)', '($x, $y)')])
+    plot.hover.mode = 'vline'
+    plot.line(xaxis, yaxis, line_width=2)
+    return dict(zip(('script', 'div'), components(plot)))
 

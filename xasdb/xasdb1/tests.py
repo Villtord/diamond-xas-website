@@ -148,7 +148,7 @@ class UploadTests(TestCase):
         self.assertEqual(xas_file.upload_file_doi, DOI)
         self.assertRedirects(response, reverse('xasdb1:file', args=[xas_file.id]))
         self.assertContains(response, 'File uploaded')
-        self.assertContains(response, 'data:image/png;base64', count=1)
+        self.assertContains(response, 'class="bk-root"', count=1)
         self.assertTrue(exists(join(TEMPDIR.name, xas_file.upload_file.name)))
         self.assertEqual(xas_file.atomic_number, 26)
         self.assertEqual(xas_file.element, 'Fe')
@@ -173,7 +173,7 @@ class UploadTests(TestCase):
         self.assertEqual(len(XASFile.objects.all()), 1)
         self.assertRedirects(response, reverse('xasdb1:file', args=[xas_file.id]))
         self.assertContains(response, 'File uploaded')
-        self.assertContains(response, 'data:image/png;base64', count=1)
+        self.assertContains(response, 'class="bk-root"', count=1)
         self.assertTrue(exists(join(TEMPDIR.name, xas_file.upload_file.name)))
         aux_data_set = xas_file.xasuploadauxdata_set.all()
         self.assertTrue(len(aux_data_set) == 1)
@@ -196,7 +196,7 @@ class UploadTests(TestCase):
         xas_file = XASFile.objects.all()[0]
         self.assertRedirects(response, reverse('xasdb1:file', args=[xas_file.id]))
         self.assertContains(response, 'File uploaded')
-        self.assertContains(response, 'data:image/png;base64', count=1)
+        self.assertContains(response, 'class="bk-root"', count=1)
         self.assertTrue(exists(join(TEMPDIR.name, xas_file.upload_file.name)))
         aux_data_set = xas_file.xasuploadauxdata_set.all()
         self.assertTrue(len(aux_data_set) == 0)
@@ -250,7 +250,7 @@ class UploadTests(TestCase):
         self.assertEqual(len(XASFile.objects.all()), 1)
         self.assertRedirects(response, reverse('xasdb1:file', args=[xas_file.id]))
         self.assertContains(response, 'File uploaded')
-        self.assertContains(response, 'data:image/png;base64', count=1)
+        self.assertContains(response, 'class="bk-root"', count=1)
         self.assertTrue(exists(join(TEMPDIR.name, xas_file.upload_file.name)))
         aux_data_set = xas_file.xasuploadauxdata_set.all()
         self.assertTrue(len(aux_data_set) == 2)
@@ -277,7 +277,7 @@ class UploadTests(TestCase):
         self.assertEqual(len(XASFile.objects.all()), 1)
         self.assertRedirects(response, reverse('xasdb1:file', args=[xas_file.id]))
         self.assertContains(response, 'File uploaded')
-        self.assertContains(response, 'data:image/png;base64', count=1)
+        self.assertContains(response, 'class="bk-root"', count=1)
         self.assertTrue(exists(join(TEMPDIR.name, xas_file.upload_file.name)))
         aux_data_set = xas_file.xasuploadauxdata_set.all()
         self.assertTrue(len(aux_data_set) == 1)
@@ -301,7 +301,7 @@ class UploadTests(TestCase):
         self.assertEqual(len(XASFile.objects.all()), 1)
         self.assertRedirects(response, reverse('xasdb1:file', args=[xas_file.id]))
         self.assertContains(response, 'File uploaded')
-        self.assertContains(response, 'data:image/png;base64', count=1)
+        self.assertContains(response, 'class="bk-root"', count=1)
         self.assertTrue(exists(join(TEMPDIR.name, xas_file.upload_file.name)))
         aux_data_set = xas_file.xasuploadauxdata_set.all()
         self.assertTrue(len(aux_data_set) == 1)
@@ -368,7 +368,7 @@ class ElementTestsCreateAndLoginAsUser(TestCase):
             xas_file = xas_file_all[len(xas_file_all) - 1]
             self.assertRedirects(response, reverse('xasdb1:file', args=[xas_file.id]))
             self.assertContains(response, 'File uploaded')
-            self.assertContains(response, 'data:image/png;base64', count=1)
+            self.assertContains(response, 'class="bk-root"', count=1)
         self.assertEqual(len(XASFile.objects.all()), len(self.xdi_files))
 
     def test_element_no_files(self):
@@ -408,7 +408,7 @@ class ElementTestsCreateAndLoginAsAdmin(TestCase):
             xas_file = xas_file_all[len(xas_file_all) - 1]
             self.assertRedirects(response, reverse('xasdb1:file', args=[xas_file.id]))
             self.assertContains(response, 'File uploaded')
-            self.assertContains(response, 'data:image/png;base64', count=1)
+            self.assertContains(response, 'class="bk-root"', count=1)
         self.assertEqual(len(XASFile.objects.all()), len(self.xdi_files))
 
     def test_element_no_files(self):
@@ -449,7 +449,7 @@ class ElementTestsCreateAsAdminAndLoginAsUser(TestCase):
             xas_file = xas_file_all[len(xas_file_all) - 1]
             self.assertRedirects(response, reverse('xasdb1:file', args=[xas_file.id]))
             self.assertContains(response, 'File uploaded')
-            self.assertContains(response, 'data:image/png;base64', count=1)
+            self.assertContains(response, 'class="bk-root"', count=1)
         self.assertEqual(len(XASFile.objects.all()), len(self.xdi_files))
         # logout
         response = self.c.post(reverse('xasdb1:logout'))
@@ -503,7 +503,7 @@ class ElementTestsCreateAsAdminAndLogout(TestCase):
             xas_file = xas_file_all[len(xas_file_all) - 1]
             self.assertRedirects(response, reverse('xasdb1:file', args=[xas_file.id]))
             self.assertContains(response, 'File uploaded')
-            self.assertContains(response, 'data:image/png;base64', count=1)
+            self.assertContains(response, 'class="bk-root"', count=1)
         self.assertEqual(len(XASFile.objects.all()), len(self.xdi_files))
         # logout
         response = self.c.post(reverse('xasdb1:logout'))
@@ -547,7 +547,7 @@ class FileTestsCreateAsAdmin(TestCase):
         xas_file = XASFile.objects.all()[0]
         self.assertRedirects(response, reverse('xasdb1:file', args=[xas_file.id]))
         self.assertContains(response, 'File uploaded')
-        self.assertContains(response, 'data:image/png;base64', count=1)
+        self.assertContains(response, 'class="bk-root"', count=1)
         self.assertEqual(len(XASFile.objects.all()), 1)
         # logout
         response = self.c.post(reverse('xasdb1:logout'))
@@ -607,7 +607,7 @@ class FileTestsCreateAsUser(TestCase):
         xas_file = XASFile.objects.all()[0]
         self.assertRedirects(response, reverse('xasdb1:file', args=[xas_file.id]))
         self.assertContains(response, 'File uploaded')
-        self.assertContains(response, 'data:image/png;base64', count=1)
+        self.assertContains(response, 'class="bk-root"', count=1)
         self.assertEqual(len(XASFile.objects.all()), 1)
         # logout
         response = self.c.post(reverse('xasdb1:logout'))
@@ -673,7 +673,7 @@ class FileTestsCheckContents(TestCase):
             xas_file = xas_file_all[len(xas_file_all) - 1]
             self.assertRedirects(response, reverse('xasdb1:file', args=[xas_file.id]))
             self.assertContains(response, 'File uploaded')
-        self.assertContains(response, 'data:image/png;base64', count=1)
+        self.assertContains(response, 'class="bk-root"', count=1)
         self.assertEqual(len(XASFile.objects.all()), len(self.xdi_files))
 
     def test_contents_presence(self):
@@ -681,6 +681,6 @@ class FileTestsCheckContents(TestCase):
         for file in files:
             #print(f"{file.upload_file.name}")
             response = self.c.post(reverse('xasdb1:file', args=[file.id]), follow=True)
-            self.assertContains(response, 'data:image/png;base64', count=1)
+            self.assertContains(response, 'class="bk-root"', count=1)
             self.assertContains(response, f'{FIRST_NAME} {LAST_NAME} ({EMAIL})')
             # self.assertNotContains(response, 'unknown')
