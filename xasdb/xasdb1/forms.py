@@ -20,7 +20,7 @@ class XASUploadAuxDataForm(ModelForm):
     class Meta:
         model = XASUploadAuxData
         fields = ('aux_description', 'aux_file')
-        widgets = {'aux_file': FileInput} # I do not like the default ClearableFileInput form widget
+        widgets = {'aux_file': FileInput(attrs={'class': 'aux_file_class'})} # I do not like the default ClearableFileInput form widget
 
 class XASUploadAuxDataBaseFormSet(BaseModelFormSet):
     def clean(self):
