@@ -18,14 +18,18 @@ def doi_valid(value):
     except Exception as e:
         raise ValidationError(f"Invalid DOI: {e}")
 
+def file_size_valid(value):
+    limit = 10 * 1024 * 1024 # 10 MB
+    if value.size > limit:
+        raise ValidationError('File size is limited to 10 MB!')
 
 def xdi_valid(value):
     temp_xdi_file = os.path.join(XDI_TMP_DIR.name, value.name)
 
-    with open(temp_xdi_file, 'w') as f:
-        f.write(value.read().decode('utf-8'))
-
     try:
+        with open(temp_xdi_file, 'w') as f:
+            f.write(value.read().decode('utf-8'))
+
         xdi_file = xdifile.XDIFile(filename=temp_xdi_file)
         if xdi_file.element.decode('utf-8') == '':
             raise Exception('no element found')
@@ -41,7 +45,7 @@ class XASFile(models.Model):
     REVIEW_STATUS_CHOICES = ((PENDING, "Pending"), (APPROVED, "Approved"), (REJECTED, "Rejected"))
 
 
-    upload_file = models.FileField(upload_to='uploads/%Y/%m/%d/', validators=[xdi_valid])
+    upload_file = models.FileField(upload_to='uploads/%Y/%m/%d/', validators=[file_size_valid, xdi_valid])
     upload_file_doi = models.CharField('Citation DOI', max_length=256, default='', validators=[doi_valid])
     upload_timestamp = models.DateTimeField('date published', auto_now_add=True)
     atomic_number = models.IntegerField(default=0)
@@ -81,7 +85,7 @@ class XASMode(models.Model):
 
 class XASUploadAuxData(models.Model):
     aux_description = models.CharField('Description', max_length=256, default='', blank=True)
-    aux_file = models.FileField(upload_to='uploads/%Y/%m/%d/', blank=True)
+    aux_file = models.FileField(upload_to='uploads/%Y/%m/%d/', blank=True, validators=[file_size_valid])
     file = models.ForeignKey(XASFile, on_delete=models.CASCADE)
 
     @property

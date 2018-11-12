@@ -6,7 +6,7 @@ from django.contrib.auth.models import User
 from xasdb.settings import BASE_DIR
 from .models import XASFile, XASUploadAuxData
 
-from os.path import join, exists, basename
+from os.path import join, exists, basename, getsize
 import tempfile
 import os
 import unittest
@@ -133,6 +133,20 @@ class UploadTests(TestCase):
         with open(test_file) as fp:
             response = c.post(reverse('xasdb1:upload'), dict(UPLOAD_FORMSET_DATA, upload_file=fp, upload_file_doi=DOI), follow=True)
         self.assertContains(response, 'not an XDI file')
+
+    def test_huge_file_good_doi(self):
+        c = Client()
+        response = c.post(reverse('xasdb1:login'), {'username': USERNAME, 'password': PASSWORD}, follow=True)
+        self.assertRedirects(response, reverse('xasdb1:index'))
+        self.assertContains(response, USERNAME  + ' logged in!')
+        test_file = join(TEMPDIR.name, 'huge.xdi')
+        with open(test_file, 'wb') as fp:
+            fp.write(os.urandom(20 * 1024 * 1024))
+        self.assertTrue(exists(test_file))
+        self.assertEqual(getsize(test_file), 20 * 1024 * 1024)
+        with open(test_file, 'rb') as fp:
+            response = c.post(reverse('xasdb1:upload'), dict(UPLOAD_FORMSET_DATA, upload_file=fp, upload_file_doi=DOI), follow=True)
+        self.assertContains(response, 'File size is limited to 10 MB!')
 
     def test_good_file_good_doi(self):
         c = Client()
@@ -342,6 +356,24 @@ class UploadTests(TestCase):
         self.assertEqual(len(XASFile.objects.all()), 0)
         self.assertContains(response, 'Auxiliary data must contain unique filenames')
 
+    def test_single_aux_huge_file(self):
+        c = Client()
+        response = c.post(reverse('xasdb1:login'), {'username': USERNAME, 'password': PASSWORD}, follow=True)
+        self.assertRedirects(response, reverse('xasdb1:index'))
+        self.assertContains(response, USERNAME  + ' logged in!')
+        test_file = join(BASE_DIR, 'xasdb1', 'testdata', 'good', 'fe3c_rt.xdi')
+        aux_file = join(TEMPDIR.name, 'huge.xdi')
+        with open(aux_file, 'wb') as fp:
+            fp.write(os.urandom(20 * 1024 * 1024))
+        self.assertTrue(exists(aux_file))
+        self.assertEqual(getsize(aux_file), 20 * 1024 * 1024)
+        self.assertTrue(exists(test_file))
+        aux_desc = ''.join(random.choices(string.ascii_uppercase + string.digits, k=10))
+        with open(test_file) as fp, open(aux_file, 'rb') as aux_fp:
+            # this should work with the defaults in UPLOAD_FORMSET_DATA
+            response = c.post(reverse('xasdb1:upload'), dict(UPLOAD_FORMSET_DATA, **{'upload_file':fp, 'upload_file_doi':DOI, 'form-0-aux_description': aux_desc, 'form-0-aux_file': aux_fp}), follow=True)
+        self.assertContains(response, 'File size is limited to 10 MB!')
+        self.assertEqual(len(XASFile.objects.all()), 0)
 
 #@unittest.skip
 @override_settings(MEDIA_ROOT=TEMPDIR.name)
