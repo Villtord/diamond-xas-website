@@ -1,5 +1,5 @@
 from django.shortcuts import (render, redirect)
-from django.http import HttpResponse
+from django.http import HttpResponse, FileResponse
 from django.urls import reverse
 
 from django.contrib.auth.decorators import login_required
@@ -10,7 +10,11 @@ from django.contrib.auth import authenticate
 from django.contrib.auth import login as _login
 from django.contrib.auth import logout as _logout
 
+from django.conf import settings
+
 from django.db.models import Q
+
+from django.utils.encoding import smart_str
 
 from .forms import FormWithFileField, ModelFormWithFileField, XASDBUserCreationForm, XASUploadAuxDataFormSet
 from .models import XASFile, XASMode, XASArray
@@ -20,6 +24,7 @@ import xraylib as xrl
 import tempfile
 import json
 import numpy as np
+import mimetypes
 
 from bokeh.plotting import figure, output_file, show 
 from bokeh.embed import components
@@ -236,3 +241,33 @@ def _file_plot(xaxis, yaxis, xaxis_name, yaxis_name):
     plot.line(xaxis, yaxis, line_width=2)
     return dict(zip(('script', 'div'), components(plot)))
 
+@login_required(login_url='xasdb1:login')
+def download(request, path_id):
+    # figure out who this file belongs to
+    try:
+        # check if path_id corresponds to XDI file
+        file = XASFile.objects.get(upload_file=path_id)
+    except Exception:
+        # check if path_id corresponds to AUX file
+        file = None
+        for xasfile in XASFile.objects.all():
+            for auxfile in xasfile.xasuploadauxdata_set.all():
+                if auxfile.aux_file.name == path_id:
+                    file = xasfile
+                    break
+            else:
+                continue
+            break
+
+    if file is None:
+        messages.error(request, 'The requested file {} does not exist'.format(path_id))
+        return redirect('xasdb1:index')
+
+    if not request.user.is_staff and request.user != file.uploader and file.review_status != XASFile.APPROVED:
+        messages.error(request, 'The requested file is not accessible')
+        return redirect('xasdb1:index')
+    # inspired by https://stackoverflow.com/q/15246661/1253230
+    file_path = settings.MEDIA_ROOT + '/' + path_id
+    file_mimetype = mimetypes.guess_type(file_path)
+    response = FileResponse(open(file_path, 'rb'), as_attachment=True, content_type=file_mimetype)
+    return response

@@ -12,6 +12,7 @@ import os
 import unittest
 import random
 import string
+import hashlib
 
 USERNAME = 'jpwqehfpfewpfhpfweq'
 PASSWORD = 'rtkhnwoehfongnrgekrg'
@@ -36,7 +37,6 @@ UPLOAD_FORMSET_DATA_DOUBLE = {
     'form-MIN_NUM_FORMS': '0',
 }
 
-#@unittest.skip
 class RegisterTests(TestCase):
     def test_failed_register_from_view1(self):
         c = Client()
@@ -54,7 +54,6 @@ class RegisterTests(TestCase):
         self.assertRedirects(response, reverse('xasdb1:index'))
         self.assertContains(response, 'Account created successfully')
 
-#@unittest.skip
 class LoginTests(TestCase):
     def test_failed_login(self):
         login = self.client.login(username=USERNAME, password=PASSWORD)
@@ -375,7 +374,6 @@ class UploadTests(TestCase):
         self.assertContains(response, 'File size is limited to 10 MB!')
         self.assertEqual(len(XASFile.objects.all()), 0)
 
-#@unittest.skip
 @override_settings(MEDIA_ROOT=TEMPDIR.name)
 class ElementTestsCreateAndLoginAsUser(TestCase):
 
@@ -415,7 +413,6 @@ class ElementTestsCreateAndLoginAsUser(TestCase):
     def test_element_Zn_files(self):
         response = self.c.get(reverse('xasdb1:element', args=['Zn']))
 
-#@unittest.skip
 @override_settings(MEDIA_ROOT=TEMPDIR.name)
 class ElementTestsCreateAndLoginAsAdmin(TestCase):
 
@@ -456,7 +453,6 @@ class ElementTestsCreateAndLoginAsAdmin(TestCase):
         response = self.c.get(reverse('xasdb1:element', args=['Zn']))
         self.assertContains(response, '1 spectrum found for Zn')
 
-#@unittest.skip
 @override_settings(MEDIA_ROOT=TEMPDIR.name)
 class ElementTestsCreateAsAdminAndLoginAsUser(TestCase):
 
@@ -510,7 +506,6 @@ class ElementTestsCreateAsAdminAndLoginAsUser(TestCase):
     def test_element_Zn_files(self):
         response = self.c.get(reverse('xasdb1:element', args=['Zn']))
 
-#@unittest.skip
 @override_settings(MEDIA_ROOT=TEMPDIR.name)
 class ElementTestsCreateAsAdminAndLogout(TestCase):
 
@@ -561,7 +556,6 @@ class ElementTestsCreateAsAdminAndLogout(TestCase):
         self.assertContains(response, 'No spectra found for Zn')
         self.assertContains(response, 'No spectra found for Zn')
 
-#@unittest.skip
 @override_settings(MEDIA_ROOT=TEMPDIR.name)
 class FileTestsCreateAsAdmin(TestCase):
 
@@ -621,7 +615,6 @@ class FileTestsCreateAsAdmin(TestCase):
         response = self.c.post(reverse('xasdb1:file', args=[file.id]), follow=True)
         self.assertContains(response, f'Spectrum: {file.sample_name}')
 
-#@unittest.skip
 @override_settings(MEDIA_ROOT=TEMPDIR.name)
 class FileTestsCreateAsUser(TestCase):
 
@@ -680,7 +673,6 @@ class FileTestsCreateAsUser(TestCase):
         response = self.c.post(reverse('xasdb1:file', args=[file.id]), follow=True)
         self.assertContains(response, f'Spectrum: {file.sample_name}')
 
-#@unittest.skip
 @override_settings(MEDIA_ROOT=TEMPDIR.name)
 class FileTestsCheckContents(TestCase):
 
@@ -716,3 +708,112 @@ class FileTestsCheckContents(TestCase):
             self.assertContains(response, 'class="bk-root"', count=1)
             self.assertContains(response, f'{FIRST_NAME} {LAST_NAME} ({EMAIL})')
             # self.assertNotContains(response, 'unknown')
+
+@override_settings(MEDIA_ROOT=TEMPDIR.name)
+class FileTestsDownload(TestCase):
+
+    def setUp(self):
+        # let's assume that registering works fine via the view..
+        User.objects.create_user(username=USERNAME, password=PASSWORD)
+        self.c = Client()
+        response = self.c.post(reverse('xasdb1:login'), {'username': USERNAME, 'password': PASSWORD}, follow=True)
+        self.assertRedirects(response, reverse('xasdb1:index'))
+        self.assertContains(response, USERNAME  + ' logged in!')
+        test_file = join(BASE_DIR, 'xasdb1', 'testdata', 'good', 'fe3c_rt.xdi')
+        aux_file1 = join(BASE_DIR, 'xasdb1', 'testdata', 'bad', 'bad_01.xdi')
+        self.assertTrue(exists(test_file))
+        self.assertTrue(exists(aux_file1))
+        aux_desc1 = ''.join(random.choices(string.ascii_uppercase + string.digits, k=10))
+        with open(test_file) as fp, open(aux_file1) as aux_fp1:
+            # this should work with the defaults in UPLOAD_FORMSET_DATA
+            response = self.c.post(reverse('xasdb1:upload'), dict(UPLOAD_FORMSET_DATA, **{'upload_file':fp, 'upload_file_doi':DOI, 'form-0-aux_description': aux_desc1, 'form-0-aux_file': aux_fp1}), follow=True)
+        xas_file = XASFile.objects.all()[0]
+        self.assertRedirects(response, reverse('xasdb1:file', args=[xas_file.id]))
+        self.assertContains(response, 'File uploaded')
+        self.assertContains(response, 'class="bk-root"', count=1)
+        self.assertEqual(len(XASFile.objects.all()), 1)
+        xas_file = XASFile.objects.all()[0]
+        self.upload_file_name = xas_file.upload_file.name
+        self.aux_file_name = xas_file.xasuploadauxdata_set.get(pk=1).aux_file.name
+        # logout
+        response = self.c.post(reverse('xasdb1:logout'))
+        self.assertRedirects(response, reverse('xasdb1:index'))
+        # calculate file checksums
+        hash_md5 = hashlib.md5()
+        with (open(test_file, 'rb')) as f:
+            for chunk in f:
+                hash_md5.update(chunk)
+        self.xdi_checksum = hash_md5.hexdigest()
+        hash_md5 = hashlib.md5()
+        with (open(aux_file1, 'rb')) as f:
+            for chunk in f:
+                hash_md5.update(chunk)
+        self.aux_checksum = hash_md5.hexdigest()
+
+    def test_download_no_login(self):
+        response = self.c.post(reverse('xasdb1:download', args=[self.upload_file_name]), follow=True)
+        self.assertRedirects(response, '/xasdb1/login/?next=/xasdb1/download/' + self.upload_file_name + '/')
+        self.assertContains(response, 'Login')
+        response = self.c.post(reverse('xasdb1:download', args=[self.aux_file_name]), follow=True)
+        self.assertRedirects(response, '/xasdb1/login/?next=/xasdb1/download/' + self.aux_file_name + '/')
+        self.assertContains(response, 'Login')
+        obj = XASFile.objects.get(pk=1)
+        obj.review_status = XASFile.APPROVED
+        obj.save()
+        response = self.c.post(reverse('xasdb1:download', args=[self.upload_file_name]), follow=True)
+        self.assertRedirects(response, '/xasdb1/login/?next=/xasdb1/download/' + self.upload_file_name + '/')
+        self.assertContains(response, 'Login')
+        response = self.c.post(reverse('xasdb1:download', args=[self.aux_file_name]), follow=True)
+        self.assertRedirects(response, '/xasdb1/login/?next=/xasdb1/download/' + self.aux_file_name + '/')
+        self.assertContains(response, 'Login')
+
+    def test_download_login_as_uploader(self):
+        response = self.c.post(reverse('xasdb1:login'), {'username': USERNAME, 'password': PASSWORD}, follow=True)
+        self.assertRedirects(response, reverse('xasdb1:index'))
+        self.assertContains(response, USERNAME  + ' logged in!')
+        response = self.c.post(reverse('xasdb1:download', args=[self.upload_file_name]))
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(response.get('Content-Disposition'), 'attachment; filename="{}"'.format(basename(self.upload_file_name)))
+        hash_md5 = hashlib.md5()
+        for chunk in response.streaming_content:
+            hash_md5.update(chunk)
+        self.assertEqual(hash_md5.hexdigest(), self.xdi_checksum)
+        response = self.c.post(reverse('xasdb1:download', args=[self.aux_file_name]))
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(response.get('Content-Disposition'), 'attachment; filename="{}"'.format(basename(self.aux_file_name)))
+        hash_md5 = hashlib.md5()
+        for chunk in response.streaming_content:
+            hash_md5.update(chunk)
+        self.assertEqual(hash_md5.hexdigest(), self.aux_checksum)
+
+    def test_download_login_as_other_user(self):
+        User.objects.create_user(username=2*USERNAME, password=2*PASSWORD)
+        response = self.c.post(reverse('xasdb1:login'), {'username': 2*USERNAME, 'password': 2*PASSWORD}, follow=True)
+        self.assertRedirects(response, reverse('xasdb1:index'))
+        self.assertContains(response, 2*USERNAME  + ' logged in!')
+        response = self.c.post(reverse('xasdb1:download', args=[self.upload_file_name]), follow=True)
+        self.assertRedirects(response, '/xasdb1/')
+        self.assertContains(response, 'The requested file is not accessible')
+        response = self.c.post(reverse('xasdb1:download', args=[self.aux_file_name]), follow=True)
+        self.assertRedirects(response, '/xasdb1/')
+        self.assertContains(response, 'The requested file is not accessible')
+
+        # now approve the file to make it accessible for this user
+        obj = XASFile.objects.get(pk=1)
+        obj.review_status = XASFile.APPROVED
+        obj.save()
+        response = self.c.post(reverse('xasdb1:download', args=[self.upload_file_name]))
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(response.get('Content-Disposition'), 'attachment; filename="{}"'.format(basename(self.upload_file_name)))
+        hash_md5 = hashlib.md5()
+        for chunk in response.streaming_content:
+            hash_md5.update(chunk)
+        self.assertEqual(hash_md5.hexdigest(), self.xdi_checksum)
+        response = self.c.post(reverse('xasdb1:download', args=[self.aux_file_name]))
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(response.get('Content-Disposition'), 'attachment; filename="{}"'.format(basename(self.aux_file_name)))
+        hash_md5 = hashlib.md5()
+        for chunk in response.streaming_content:
+            hash_md5.update(chunk)
+        self.assertEqual(hash_md5.hexdigest(), self.aux_checksum)
+

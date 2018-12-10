@@ -25,10 +25,12 @@
 <br/>
 
 <table class="file-table-main">
+{% if user.is_authenticated %}
 <tr>
 	<td> Original Data File: </td>
-	<td> <a href="{{ file.upload_file.url }}">{{ file.name }}</a></td>
+	<td> <a href="{% url 'xasdb1:download' file.upload_file.url %}">{{ file.name }}</a></td>
 </tr>
+{% endif %}
 <tr>
 	<td>Absorption Edge:</td>
 	<td><a href="{% url 'xasdb1:element' file.element %}">{{ file.element }}</a> {{file.edge}} edge</td>
@@ -66,7 +68,7 @@
 
 </table>
 
-{% if aux %}
+{% if user.is_authenticated and aux %}
 <br/>
 <table class="file-table-aux">
 <tr>
@@ -76,7 +78,7 @@
 {% for data in aux %}
 <tr>
 	<td>{{ data.aux_description }}</td>
-	<td> <a href="{{ data.aux_file.url }}">{{ data.name }}</a></td>
+	<td> <a href="{% url 'xasdb1:download' data.aux_file.url %}">{{ data.name }}</a></td>
 </tr>
 {% endfor %}
 </table>

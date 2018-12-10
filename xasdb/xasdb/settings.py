@@ -119,12 +119,16 @@ USE_TZ = True
 # Static files (CSS, JavaScript, Images)
 # https://docs.djangoproject.com/en/2.0/howto/static-files/
 
+ABSOLUTE_PATH = lambda x: os.path.join(os.path.abspath(os.path.dirname(__file__)), '..', x)
+
 STATIC_URL = '/static/'
+STATIC_ROOT = ABSOLUTE_PATH('static/')
 
 # allow inactive users
 AUTHENTICATION_BACKENDS = ['django.contrib.auth.backends.AllowAllUsersModelBackend']
 
 import os.path
-MEDIA_URL = '/media/'
-ABSOLUTE_PATH = lambda x: os.path.join(os.path.abspath(os.path.dirname(__file__)), '..', x)
+#MEDIA_URL = '/media/'
 MEDIA_ROOT = ABSOLUTE_PATH('media/')
+FILE_UPLOAD_PERMISSIONS = 0o600
+FILE_UPLOAD_DIRECTORY_PERMISSIONS = 0o700
