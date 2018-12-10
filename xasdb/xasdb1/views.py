@@ -37,6 +37,9 @@ import traceback
 
 XDI_TMP_DIR = tempfile.TemporaryDirectory()
 
+OUR_CITATION = \
+        '''<div style="padding-left:30px">G. Cibin, D. Gianolio, S. A. Parry, T. Schoonjans, O. Moore, R. Draper, L. A. Miller, A. Thoma, C. L. Doswell, and A. Graham. An open access, integrated XAS data repository at Diamond Light Source. <i>XAFS 2018 conference proceedings</i> (2019)</div>''' # add clickable doi url when known!
+
 def index(request):
     return render(request, 'xasdb1/index.html')
 
@@ -226,13 +229,19 @@ def file(request, file_id):
                     elif index != len(work['message']['author']) - 1:
                         authorlist += ', '
                         
-        doi['author'] = authorlist
+        doi['authors'] = authorlist
+        doi['citation'] = "{authors}. {title}, <i>{journal}</i> ({year}).".format(authors=doi['authors'], title=doi['title'], journal=doi['journal'], year=doi['year'])
+        message = \
+                '''By downloading this file, I agree to cite its original authors' manuscript:<br><div style="padding-left: 30px"><a href="{}">{}</a></div><br>as well as the manuscript covering this website:<br>{}'''.format(doi['url'], doi['citation'], OUR_CITATION)
     except Exception as e:
         print(f'file.upload_file_doi: {file.upload_file_doi}')
         traceback.print_exc()
         doi = None
+        message = \
+'''By downloading this file, I agree to cite the manuscript of this website {}'''.format(doi['citation'], OUR_CITATION)
 
-    return render(request, 'xasdb1/file.html', {'file' : file, 'plots': plots, 'aux' : file.xasuploadauxdata_set.all(), 'doi' : doi, 'bokeh_version': bokeh_version})
+
+    return render(request, 'xasdb1/file.html', {'file' : file, 'plots': plots, 'aux' : file.xasuploadauxdata_set.all(), 'doi' : doi, 'bokeh_version': bokeh_version, 'message': message})
     
 
 def _file_plot(xaxis, yaxis, xaxis_name, yaxis_name):
