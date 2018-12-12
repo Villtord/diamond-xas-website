@@ -17,7 +17,7 @@ from django.db.models import Q
 from django.utils.encoding import smart_str
 
 from .forms import FormWithFileField, ModelFormWithFileField, XASDBUserCreationForm, XASUploadAuxDataFormSet
-from .models import XASFile, XASMode, XASArray
+from .models import XASFile, XASMode, XASArray, XASUploadAuxData
 from .utils import process_xdi_file
 
 import xraylib as xrl
@@ -256,25 +256,35 @@ def download(request, path_id):
     try:
         # check if path_id corresponds to XDI file
         file = XASFile.objects.get(upload_file=path_id)
+        files = (file, file)
     except Exception:
         # check if path_id corresponds to AUX file
-        file = None
+        files = None
         for xasfile in XASFile.objects.all():
             for auxfile in xasfile.xasuploadauxdata_set.all():
                 if auxfile.aux_file.name == path_id:
-                    file = xasfile
+                    files = (xasfile, auxfile)
                     break
             else:
                 continue
             break
 
-    if file is None:
+    if files is None:
         messages.error(request, 'The requested file {} does not exist'.format(path_id))
         return redirect('xasdb1:index')
 
-    if not request.user.is_staff and request.user != file.uploader and file.review_status != XASFile.APPROVED:
+    if not request.user.is_staff and request.user != files[0].uploader and files[0].review_status != XASFile.APPROVED:
         messages.error(request, 'The requested file is not accessible')
         return redirect('xasdb1:index')
+
+    # at this point we are going to serve the file!
+    if isinstance(files[1], XASFile):
+        # create download entry
+        files[1].xasdownloadfile_set.create(downloader=request.user)
+    elif isinstance(files[1], XASUploadAuxData):
+        files[1].xasdownloadauxdata_set.create(downloader=request.user)
+
+
     # inspired by https://stackoverflow.com/q/15246661/1253230
     file_path = settings.MEDIA_ROOT + '/' + path_id
     file_mimetype = mimetypes.guess_type(file_path)

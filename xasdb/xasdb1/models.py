@@ -91,3 +91,17 @@ class XASUploadAuxData(models.Model):
     @property
     def name(self):
         return os.path.basename(self.aux_file.name)
+
+class XASDownloadFile(models.Model):
+    #ip_address = models.GenericIPAddressField()
+    download_timestamp = models.DateTimeField('date downloaded', auto_now_add=True)
+    downloader = models.ForeignKey(User, on_delete=models.SET_NULL, null=True)
+    file = models.ForeignKey(XASFile, on_delete=models.CASCADE)
+    
+class XASDownloadAuxData(models.Model):
+    #ip_address = models.GenericIPAddressField()
+    download_timestamp = models.DateTimeField('date downloaded', auto_now_add=True)
+    downloader = models.ForeignKey(User, on_delete=models.SET_NULL, null=True)
+    file = models.ForeignKey(XASUploadAuxData, on_delete=models.CASCADE)
+    
+
