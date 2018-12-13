@@ -132,3 +132,9 @@ import os.path
 MEDIA_ROOT = ABSOLUTE_PATH('media/')
 FILE_UPLOAD_PERMISSIONS = 0o600
 FILE_UPLOAD_DIRECTORY_PERMISSIONS = 0o700
+
+# email stuff
+ADMINS = [('Tom Schoonjans', 'Tom.Schoonjans@diamond.ac.uk')]
+EMAIL_BACKEND = 'django.core.mail.backends.smtp.EmailBackend'
+
+

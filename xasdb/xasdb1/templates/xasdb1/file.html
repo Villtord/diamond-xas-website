@@ -26,6 +26,12 @@
 
 <table class="file-table-main">
 {% if user.is_authenticated %}
+{% if user == file.uploader and not user.is_staff and not user.is_superuser  %}
+<tr>
+	<td> Submission Status: </td>
+	<td> {{ file.get_review_status_display }} </td>
+</tr>
+{% endif %}
 <tr>
 	<td> Original Data File: </td>
 	<td> <a href="#" onClick="myConfirm('{% url 'xasdb1:download' file.upload_file.url %}', '{{ message | escapejs }}');">{{ file.name }}</a></td>

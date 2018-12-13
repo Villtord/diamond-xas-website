@@ -399,6 +399,8 @@ class ElementTestsCreateAndLoginAsUser(TestCase):
             self.assertRedirects(response, reverse('xasdb1:file', args=[xas_file.id]))
             self.assertContains(response, 'File uploaded')
             self.assertContains(response, 'class="bk-root"', count=1)
+            self.assertContains(response, 'Submission Status', count=1)
+            self.assertContains(response, 'Pending', count=1)
         self.assertEqual(XASFile.objects.count(), len(self.xdi_files))
 
     def test_element_no_files(self):
@@ -412,6 +414,7 @@ class ElementTestsCreateAndLoginAsUser(TestCase):
 
     def test_element_Zn_files(self):
         response = self.c.get(reverse('xasdb1:element', args=['Zn']))
+        self.assertContains(response, '1 spectrum found for Zn')
 
 @override_settings(MEDIA_ROOT=TEMPDIR.name)
 class ElementTestsCreateAndLoginAsAdmin(TestCase):
@@ -438,6 +441,7 @@ class ElementTestsCreateAndLoginAsAdmin(TestCase):
             self.assertRedirects(response, reverse('xasdb1:file', args=[xas_file.id]))
             self.assertContains(response, 'File uploaded')
             self.assertContains(response, 'class="bk-root"', count=1)
+            self.assertNotContains(response, 'Submission Status')
         self.assertEqual(XASFile.objects.count(), len(self.xdi_files))
 
     def test_element_no_files(self):
@@ -478,6 +482,7 @@ class ElementTestsCreateAsAdminAndLoginAsUser(TestCase):
             self.assertRedirects(response, reverse('xasdb1:file', args=[xas_file.id]))
             self.assertContains(response, 'File uploaded')
             self.assertContains(response, 'class="bk-root"', count=1)
+            self.assertNotContains(response, 'Submission Status')
         self.assertEqual(XASFile.objects.count(), len(self.xdi_files))
         # logout
         response = self.c.post(reverse('xasdb1:logout'))
@@ -491,6 +496,7 @@ class ElementTestsCreateAsAdminAndLoginAsUser(TestCase):
     def test_element_no_files(self):
         # pretty sure there's no uranium data
         response = self.c.get(reverse('xasdb1:element', args=['U']))
+        self.assertContains(response, 'No spectra found for U')
 
     def test_element_Fe_files(self):
         response = self.c.get(reverse('xasdb1:element', args=['Fe']))
@@ -500,11 +506,17 @@ class ElementTestsCreateAsAdminAndLoginAsUser(TestCase):
             obj.review_status = XASFile.APPROVED
             obj.save()
         response = self.c.get(reverse('xasdb1:element', args=['Fe']))
-        #print(f'response: {response.content}')
         self.assertContains(response, '3 spectra found for Fe')
+        # now lets reject them
+        for obj in XASFile.objects.filter(atomic_number=26)[::2]:
+            obj.review_status = XASFile.REJECTED
+            obj.save()
+        response = self.c.get(reverse('xasdb1:element', args=['Fe']))
+        self.assertContains(response, 'No spectra found for Fe')
 
     def test_element_Zn_files(self):
         response = self.c.get(reverse('xasdb1:element', args=['Zn']))
+        self.assertContains(response, 'No spectra found for Zn')
 
 @override_settings(MEDIA_ROOT=TEMPDIR.name)
 class ElementTestsCreateAsAdminAndLogout(TestCase):
@@ -531,6 +543,7 @@ class ElementTestsCreateAsAdminAndLogout(TestCase):
             self.assertRedirects(response, reverse('xasdb1:file', args=[xas_file.id]))
             self.assertContains(response, 'File uploaded')
             self.assertContains(response, 'class="bk-root"', count=1)
+            self.assertNotContains(response, 'Submission Status')
         self.assertEqual(XASFile.objects.count(), len(self.xdi_files))
         # logout
         response = self.c.post(reverse('xasdb1:logout'))
@@ -539,6 +552,7 @@ class ElementTestsCreateAsAdminAndLogout(TestCase):
     def test_element_no_files(self):
         # pretty sure there's no uranium data
         response = self.c.get(reverse('xasdb1:element', args=['U']))
+        self.assertContains(response, 'No spectra found for U')
 
     def test_element_Fe_files(self):
         response = self.c.get(reverse('xasdb1:element', args=['Fe']))
@@ -548,12 +562,16 @@ class ElementTestsCreateAsAdminAndLogout(TestCase):
             obj.review_status = XASFile.APPROVED
             obj.save()
         response = self.c.get(reverse('xasdb1:element', args=['Fe']))
-        #print(f'response: {response.content}')
         self.assertContains(response, '3 spectra found for Fe')
+        # now lets reject them
+        for obj in XASFile.objects.filter(atomic_number=26)[::2]:
+            obj.review_status = XASFile.REJECTED
+            obj.save()
+        response = self.c.get(reverse('xasdb1:element', args=['Fe']))
+        self.assertContains(response, 'No spectra found for Fe')
 
     def test_element_Zn_files(self):
         response = self.c.get(reverse('xasdb1:element', args=['Zn']))
-        self.assertContains(response, 'No spectra found for Zn')
         self.assertContains(response, 'No spectra found for Zn')
 
 @override_settings(MEDIA_ROOT=TEMPDIR.name)
@@ -588,6 +606,11 @@ class FileTestsCreateAsAdmin(TestCase):
         file.save()
         response = self.c.post(reverse('xasdb1:file', args=[file.id]), follow=True)
         self.assertContains(response, f'Spectrum: {file.sample_name}')
+        file.review_status = XASFile.REJECTED
+        file.save()
+        response = self.c.post(reverse('xasdb1:file', args=[file.id]), follow=True)
+        self.assertRedirects(response, reverse('xasdb1:index'))
+        self.assertContains(response, 'The requested file is not accessible')
 
     def test_file_login_as_user(self):
         User.objects.create_user(username=USERNAME, password=PASSWORD)
@@ -602,6 +625,7 @@ class FileTestsCreateAsAdmin(TestCase):
         file.save()
         response = self.c.post(reverse('xasdb1:file', args=[file.id]), follow=True)
         self.assertContains(response, f'Spectrum: {file.sample_name}')
+        self.assertNotContains(response, 'Submission Status')
 
     def test_file_login_as_admin(self):
         response = self.c.post(reverse('xasdb1:login'), {'username': 2*USERNAME, 'password': 2*PASSWORD}, follow=True)
@@ -614,6 +638,7 @@ class FileTestsCreateAsAdmin(TestCase):
         file.save()
         response = self.c.post(reverse('xasdb1:file', args=[file.id]), follow=True)
         self.assertContains(response, f'Spectrum: {file.sample_name}')
+        self.assertNotContains(response, 'Submission Status')
 
 @override_settings(MEDIA_ROOT=TEMPDIR.name)
 class FileTestsCreateAsUser(TestCase):
@@ -647,6 +672,7 @@ class FileTestsCreateAsUser(TestCase):
         file.save()
         response = self.c.post(reverse('xasdb1:file', args=[file.id]), follow=True)
         self.assertContains(response, f'Spectrum: {file.sample_name}')
+        self.assertNotContains(response, 'Submission Status')
 
     def test_file_login_as_user(self):
         response = self.c.post(reverse('xasdb1:login'), {'username': USERNAME, 'password': PASSWORD}, follow=True)
@@ -655,10 +681,20 @@ class FileTestsCreateAsUser(TestCase):
         file = XASFile.objects.all()[0]
         response = self.c.post(reverse('xasdb1:file', args=[file.id]), follow=True)
         self.assertContains(response, f'Spectrum: {file.sample_name}')
+        self.assertContains(response, 'Submission Status')
+        self.assertContains(response, 'Pending')
         file.review_status = XASFile.APPROVED
         file.save()
         response = self.c.post(reverse('xasdb1:file', args=[file.id]), follow=True)
         self.assertContains(response, f'Spectrum: {file.sample_name}')
+        self.assertContains(response, 'Submission Status')
+        self.assertContains(response, 'Approved')
+        file.review_status = XASFile.REJECTED
+        file.save()
+        response = self.c.post(reverse('xasdb1:file', args=[file.id]), follow=True)
+        self.assertContains(response, f'Spectrum: {file.sample_name}')
+        self.assertContains(response, 'Submission Status')
+        self.assertContains(response, 'Rejected')
 
     def test_file_login_as_admin(self):
         User.objects.create_superuser(username=2*USERNAME, password=2*PASSWORD, email='test@example.com')
@@ -668,10 +704,12 @@ class FileTestsCreateAsUser(TestCase):
         file = XASFile.objects.all()[0]
         response = self.c.post(reverse('xasdb1:file', args=[file.id]), follow=True)
         self.assertContains(response, f'Spectrum: {file.sample_name}')
+        self.assertNotContains(response, 'Submission Status')
         file.review_status = XASFile.APPROVED
         file.save()
         response = self.c.post(reverse('xasdb1:file', args=[file.id]), follow=True)
         self.assertContains(response, f'Spectrum: {file.sample_name}')
+        self.assertNotContains(response, 'Submission Status')
 
 @override_settings(MEDIA_ROOT=TEMPDIR.name)
 class FileTestsCheckContents(TestCase):
