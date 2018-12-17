@@ -16,7 +16,7 @@ from django.db.models import Q
 
 from django.utils.encoding import smart_str
 
-from .forms import FormWithFileField, ModelFormWithFileField, XASDBUserCreationForm, XASUploadAuxDataFormSet
+from .forms import XASFileSubmissionForm, XASDBUserCreationForm, XASUploadAuxDataFormSet, XASFileVerificationForm, XASUploadAuxDataVerificationFormSet
 from .models import XASFile, XASMode, XASArray, XASUploadAuxData
 from .utils import process_xdi_file
 
@@ -109,7 +109,7 @@ def element(request, element_id):
 def upload(request):
     #print(f"request.method: {request.method}")
     if request.method == 'POST':
-        form = ModelFormWithFileField(request.POST, request.FILES)
+        form = XASFileSubmissionForm(request.POST, request.FILES)
         upload_aux_formset = XASUploadAuxDataFormSet(request.POST, request.FILES)
         form_is_valid = form.is_valid()
         upload_aux_formset_is_valid = upload_aux_formset.is_valid()
@@ -134,7 +134,7 @@ def upload(request):
             messages.success(request, 'File uploaded')
             return redirect('xasdb1:file', xas_file.id)
     else:
-        form = ModelFormWithFileField()
+        form = XASFileSubmissionForm()
         data = {
             'form-TOTAL_FORMS': '1',
             'form-INITIAL_FORMS': '0',
@@ -240,8 +240,32 @@ def file(request, file_id):
         message = \
 '''By downloading this file, I agree to cite the manuscript of this website {}'''.format(doi['citation'], OUR_CITATION)
 
+    form = None
+    formset = None
+    if request.user.is_staff:
+        if request.method == 'POST':
+            #for key, values in request.POST.lists():
+            #    print(key, values)
+            form = XASFileVerificationForm(request.POST, instance=file)
+            formset = XASUploadAuxDataVerificationFormSet(request.POST, instance=file)
+            if form.is_valid() and formset.is_valid():
+                form.save()
+                formset.save()
+                messages.success(request, 'File information updated')
+                formset = XASUploadAuxDataVerificationFormSet(instance=file)
+            else:
+                messages.error(request, 'Could not update file: check error messages below')
+        else:
+            form = XASFileVerificationForm(instance=file)
+            formset = XASUploadAuxDataVerificationFormSet(instance=file)
+    elif request.method == 'POST':
+        # naughty
+        #for key, values in request.POST.lists():
+        #    print(key, values)
+        messages.error(request, 'Only staff can make file POST requests!')
+        return redirect('xasdb1:index')
 
-    return render(request, 'xasdb1/file.html', {'file' : file, 'plots': plots, 'aux' : file.xasuploadauxdata_set.all(), 'doi' : doi, 'bokeh_version': bokeh_version, 'message': message})
+    return render(request, 'xasdb1/file.html', {'file' : file, 'plots': plots, 'aux' : file.xasuploadauxdata_set.all(), 'doi' : doi, 'bokeh_version': bokeh_version, 'message': message, 'form': form, 'formset': formset})
     
 
 def _file_plot(xaxis, yaxis, xaxis_name, yaxis_name):

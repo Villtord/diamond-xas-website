@@ -2,6 +2,7 @@ from django.test import TestCase, Client
 from django.test import override_settings
 from django.urls import reverse
 from django.contrib.auth.models import User
+from django.forms.models import model_to_dict
 
 from xasdb.settings import BASE_DIR
 from .models import XASFile, XASUploadAuxData
@@ -13,6 +14,7 @@ import unittest
 import random
 import string
 import hashlib
+import xraylib as xrl
 
 USERNAME = 'jpwqehfpfewpfhpfweq'
 PASSWORD = 'rtkhnwoehfongnrgekrg'
@@ -69,7 +71,7 @@ class LoginTests(TestCase):
         response = c.post(reverse('xasdb1:login'), {'username': USERNAME, 'password': PASSWORD}, follow=True)
         self.assertContains(response, 'Please enter a correct username and password. Note that both fields may be case-sensitive.')
         # logout
-        response = c.post(reverse('xasdb1:logout'), follow=True)
+        response = c.get(reverse('xasdb1:logout'), follow=True)
         self.assertRedirects(response, reverse('xasdb1:index'))
         self.assertContains(response, 'Not logged in!')
 
@@ -82,7 +84,7 @@ class LoginTests(TestCase):
         self.assertRedirects(response, reverse('xasdb1:index'))
         self.assertContains(response, USERNAME  + ' logged in!')
         # logout
-        response = c.post(reverse('xasdb1:logout'))
+        response = c.get(reverse('xasdb1:logout'))
         self.assertRedirects(response, reverse('xasdb1:index'))
 
 @override_settings(MEDIA_ROOT=TEMPDIR.name)
@@ -163,9 +165,8 @@ class UploadTests(TestCase):
         self.assertContains(response, 'File uploaded')
         self.assertContains(response, 'class="bk-root"', count=1)
         self.assertTrue(exists(join(TEMPDIR.name, xas_file.upload_file.name)))
-        self.assertEqual(xas_file.atomic_number, 26)
         self.assertEqual(xas_file.element, 'Fe')
-        self.assertEqual(xas_file.edge, 'K')
+        self.assertEqual(xas_file.edge, xrl.K_SHELL)
         self.assertEqual(xas_file.uploader.username, USERNAME)
         self.assertEqual(xas_file.review_status, XASFile.PENDING)
 
@@ -485,7 +486,7 @@ class ElementTestsCreateAsAdminAndLoginAsUser(TestCase):
             self.assertNotContains(response, 'Submission Status')
         self.assertEqual(XASFile.objects.count(), len(self.xdi_files))
         # logout
-        response = self.c.post(reverse('xasdb1:logout'))
+        response = self.c.get(reverse('xasdb1:logout'))
         self.assertRedirects(response, reverse('xasdb1:index'))
         # create and login as regular user
         User.objects.create_user(username=2*USERNAME, password=2*PASSWORD)
@@ -502,13 +503,13 @@ class ElementTestsCreateAsAdminAndLoginAsUser(TestCase):
         response = self.c.get(reverse('xasdb1:element', args=['Fe']))
         self.assertContains(response, 'No spectra found for Fe')
         # let's approve 3 of them and try again
-        for obj in XASFile.objects.filter(atomic_number=26)[::2]:
+        for obj in XASFile.objects.filter(element="Fe")[::2]:
             obj.review_status = XASFile.APPROVED
             obj.save()
         response = self.c.get(reverse('xasdb1:element', args=['Fe']))
         self.assertContains(response, '3 spectra found for Fe')
         # now lets reject them
-        for obj in XASFile.objects.filter(atomic_number=26)[::2]:
+        for obj in XASFile.objects.filter(element="Fe")[::2]:
             obj.review_status = XASFile.REJECTED
             obj.save()
         response = self.c.get(reverse('xasdb1:element', args=['Fe']))
@@ -546,7 +547,7 @@ class ElementTestsCreateAsAdminAndLogout(TestCase):
             self.assertNotContains(response, 'Submission Status')
         self.assertEqual(XASFile.objects.count(), len(self.xdi_files))
         # logout
-        response = self.c.post(reverse('xasdb1:logout'))
+        response = self.c.get(reverse('xasdb1:logout'))
         self.assertRedirects(response, reverse('xasdb1:index'))
 
     def test_element_no_files(self):
@@ -558,13 +559,13 @@ class ElementTestsCreateAsAdminAndLogout(TestCase):
         response = self.c.get(reverse('xasdb1:element', args=['Fe']))
         self.assertContains(response, 'No spectra found for Fe')
         # let's approve 3 of them and try again
-        for obj in XASFile.objects.filter(atomic_number=26)[::2]:
+        for obj in XASFile.objects.filter(element="Fe")[::2]:
             obj.review_status = XASFile.APPROVED
             obj.save()
         response = self.c.get(reverse('xasdb1:element', args=['Fe']))
         self.assertContains(response, '3 spectra found for Fe')
         # now lets reject them
-        for obj in XASFile.objects.filter(atomic_number=26)[::2]:
+        for obj in XASFile.objects.filter(element="Fe")[::2]:
             obj.review_status = XASFile.REJECTED
             obj.save()
         response = self.c.get(reverse('xasdb1:element', args=['Fe']))
@@ -594,21 +595,21 @@ class FileTestsCreateAsAdmin(TestCase):
         self.assertContains(response, 'class="bk-root"', count=1)
         self.assertEqual(XASFile.objects.count(), 1)
         # logout
-        response = self.c.post(reverse('xasdb1:logout'))
+        response = self.c.get(reverse('xasdb1:logout'))
         self.assertRedirects(response, reverse('xasdb1:index'))
 
     def test_file_no_login(self):
         file = XASFile.objects.all()[0]
-        response = self.c.post(reverse('xasdb1:file', args=[file.id]), follow=True)
+        response = self.c.get(reverse('xasdb1:file', args=[file.id]), follow=True)
         self.assertRedirects(response, reverse('xasdb1:index'))
         self.assertContains(response, 'The requested file is not accessible')
         file.review_status = XASFile.APPROVED
         file.save()
-        response = self.c.post(reverse('xasdb1:file', args=[file.id]), follow=True)
+        response = self.c.get(reverse('xasdb1:file', args=[file.id]), follow=True)
         self.assertContains(response, f'Spectrum: {file.sample_name}')
         file.review_status = XASFile.REJECTED
         file.save()
-        response = self.c.post(reverse('xasdb1:file', args=[file.id]), follow=True)
+        response = self.c.get(reverse('xasdb1:file', args=[file.id]), follow=True)
         self.assertRedirects(response, reverse('xasdb1:index'))
         self.assertContains(response, 'The requested file is not accessible')
 
@@ -618,12 +619,12 @@ class FileTestsCreateAsAdmin(TestCase):
         self.assertRedirects(response, reverse('xasdb1:index'))
         self.assertContains(response, USERNAME  + ' logged in!')
         file = XASFile.objects.all()[0]
-        response = self.c.post(reverse('xasdb1:file', args=[file.id]), follow=True)
+        response = self.c.get(reverse('xasdb1:file', args=[file.id]), follow=True)
         self.assertRedirects(response, reverse('xasdb1:index'))
         self.assertContains(response, 'The requested file is not accessible')
         file.review_status = XASFile.APPROVED
         file.save()
-        response = self.c.post(reverse('xasdb1:file', args=[file.id]), follow=True)
+        response = self.c.get(reverse('xasdb1:file', args=[file.id]), follow=True)
         self.assertContains(response, f'Spectrum: {file.sample_name}')
         self.assertNotContains(response, 'Submission Status')
 
@@ -632,13 +633,18 @@ class FileTestsCreateAsAdmin(TestCase):
         self.assertRedirects(response, reverse('xasdb1:index'))
         self.assertContains(response, 2*USERNAME  + ' logged in!')
         file = XASFile.objects.all()[0]
-        response = self.c.post(reverse('xasdb1:file', args=[file.id]), follow=True)
-        self.assertContains(response, f'Spectrum: {file.sample_name}')
-        file.review_status = XASFile.APPROVED
-        file.save()
-        response = self.c.post(reverse('xasdb1:file', args=[file.id]), follow=True)
+        response = self.c.get(reverse('xasdb1:file', args=[file.id]), follow=True)
         self.assertContains(response, f'Spectrum: {file.sample_name}')
         self.assertNotContains(response, 'Submission Status')
+        self.assertContains(response, 'Review status')
+        self.assertContains(response, 'selected>Pending')
+        file.review_status = XASFile.APPROVED
+        file.save()
+        response = self.c.get(reverse('xasdb1:file', args=[file.id]), follow=True)
+        self.assertContains(response, f'Spectrum: {file.sample_name}')
+        self.assertNotContains(response, 'Submission Status')
+        self.assertContains(response, 'Review status')
+        self.assertContains(response, 'selected>Approved')
 
 @override_settings(MEDIA_ROOT=TEMPDIR.name)
 class FileTestsCreateAsUser(TestCase):
@@ -660,17 +666,17 @@ class FileTestsCreateAsUser(TestCase):
         self.assertContains(response, 'class="bk-root"', count=1)
         self.assertEqual(XASFile.objects.count(), 1)
         # logout
-        response = self.c.post(reverse('xasdb1:logout'))
+        response = self.c.get(reverse('xasdb1:logout'))
         self.assertRedirects(response, reverse('xasdb1:index'))
 
     def test_file_no_login(self):
         file = XASFile.objects.all()[0]
-        response = self.c.post(reverse('xasdb1:file', args=[file.id]), follow=True)
+        response = self.c.get(reverse('xasdb1:file', args=[file.id]), follow=True)
         self.assertRedirects(response, reverse('xasdb1:index'))
         self.assertContains(response, 'The requested file is not accessible')
         file.review_status = XASFile.APPROVED
         file.save()
-        response = self.c.post(reverse('xasdb1:file', args=[file.id]), follow=True)
+        response = self.c.get(reverse('xasdb1:file', args=[file.id]), follow=True)
         self.assertContains(response, f'Spectrum: {file.sample_name}')
         self.assertNotContains(response, 'Submission Status')
 
@@ -679,19 +685,19 @@ class FileTestsCreateAsUser(TestCase):
         self.assertRedirects(response, reverse('xasdb1:index'))
         self.assertContains(response, USERNAME  + ' logged in!')
         file = XASFile.objects.all()[0]
-        response = self.c.post(reverse('xasdb1:file', args=[file.id]), follow=True)
+        response = self.c.get(reverse('xasdb1:file', args=[file.id]), follow=True)
         self.assertContains(response, f'Spectrum: {file.sample_name}')
         self.assertContains(response, 'Submission Status')
         self.assertContains(response, 'Pending')
         file.review_status = XASFile.APPROVED
         file.save()
-        response = self.c.post(reverse('xasdb1:file', args=[file.id]), follow=True)
+        response = self.c.get(reverse('xasdb1:file', args=[file.id]), follow=True)
         self.assertContains(response, f'Spectrum: {file.sample_name}')
         self.assertContains(response, 'Submission Status')
         self.assertContains(response, 'Approved')
         file.review_status = XASFile.REJECTED
         file.save()
-        response = self.c.post(reverse('xasdb1:file', args=[file.id]), follow=True)
+        response = self.c.get(reverse('xasdb1:file', args=[file.id]), follow=True)
         self.assertContains(response, f'Spectrum: {file.sample_name}')
         self.assertContains(response, 'Submission Status')
         self.assertContains(response, 'Rejected')
@@ -702,14 +708,18 @@ class FileTestsCreateAsUser(TestCase):
         self.assertRedirects(response, reverse('xasdb1:index'))
         self.assertContains(response, 2*USERNAME  + ' logged in!')
         file = XASFile.objects.all()[0]
-        response = self.c.post(reverse('xasdb1:file', args=[file.id]), follow=True)
+        response = self.c.get(reverse('xasdb1:file', args=[file.id]), follow=True)
         self.assertContains(response, f'Spectrum: {file.sample_name}')
         self.assertNotContains(response, 'Submission Status')
+        self.assertContains(response, 'Review status')
+        self.assertContains(response, 'selected>Pending')
         file.review_status = XASFile.APPROVED
         file.save()
-        response = self.c.post(reverse('xasdb1:file', args=[file.id]), follow=True)
+        response = self.c.get(reverse('xasdb1:file', args=[file.id]), follow=True)
         self.assertContains(response, f'Spectrum: {file.sample_name}')
         self.assertNotContains(response, 'Submission Status')
+        self.assertContains(response, 'Review status')
+        self.assertContains(response, 'selected>Approved')
 
 @override_settings(MEDIA_ROOT=TEMPDIR.name)
 class FileTestsCheckContents(TestCase):
@@ -742,9 +752,9 @@ class FileTestsCheckContents(TestCase):
         files = XASFile.objects.all()
         for file in files:
             #print(f"{file.upload_file.name}")
-            response = self.c.post(reverse('xasdb1:file', args=[file.id]), follow=True)
+            response = self.c.get(reverse('xasdb1:file', args=[file.id]), follow=True)
             self.assertContains(response, 'class="bk-root"', count=1)
-            self.assertContains(response, f'{FIRST_NAME} {LAST_NAME} ({EMAIL})')
+            self.assertContains(response, f'{FIRST_NAME} {LAST_NAME}')
             # self.assertNotContains(response, 'unknown')
 
 @override_settings(MEDIA_ROOT=TEMPDIR.name)
@@ -774,7 +784,7 @@ class FileTestsDownload(TestCase):
         self.upload_file_name = xas_file.upload_file.name
         self.aux_file_name = xas_file.xasuploadauxdata_set.get(pk=1).aux_file.name
         # logout
-        response = self.c.post(reverse('xasdb1:logout'))
+        response = self.c.get(reverse('xasdb1:logout'))
         self.assertRedirects(response, reverse('xasdb1:index'))
         # calculate file checksums
         hash_md5 = hashlib.md5()
@@ -934,3 +944,197 @@ class FileTestsDownload(TestCase):
         response = self.c.post(reverse('xasdb1:download', args=["non-existent-file.xdi"]), follow=True)
         self.assertRedirects(response, '/xasdb1/')
         self.assertContains(response, 'The requested file non-existent-file.xdi does not exist')
+
+@override_settings(MEDIA_ROOT=TEMPDIR.name)
+class FileTestsVerify(TestCase):
+    def setUp(self):
+        # let's assume that registering works fine via the view..
+        self.user = User.objects.create_user(username=USERNAME, password=PASSWORD)
+        self.c = Client()
+        response = self.c.post(reverse('xasdb1:login'), {'username': USERNAME, 'password': PASSWORD}, follow=True)
+        self.assertRedirects(response, reverse('xasdb1:index'))
+        self.assertContains(response, USERNAME  + ' logged in!')
+        test_file = join(BASE_DIR, 'xasdb1', 'testdata', 'good', 'fe3c_rt.xdi')
+        aux_file1 = join(BASE_DIR, 'xasdb1', 'testdata', 'bad', 'bad_01.xdi')
+        aux_file2 = join(BASE_DIR, 'xasdb1', 'testdata', 'bad', 'bad_02.xdi')
+        aux_file3 = join(BASE_DIR, 'xasdb1', 'testdata', 'bad', 'bad_03.xdi')
+        self.assertTrue(exists(test_file))
+        self.assertTrue(exists(aux_file1))
+        self.assertTrue(exists(aux_file2))
+        self.assertTrue(exists(aux_file3))
+        aux_desc1 = ''.join(random.choices(string.ascii_uppercase + string.digits, k=10))
+        aux_desc2 = ''.join(random.choices(string.ascii_uppercase + string.digits, k=10))
+        aux_desc3 = ''.join(random.choices(string.ascii_uppercase + string.digits, k=10))
+        with open(test_file) as fp, open(aux_file1) as aux_fp1, open(aux_file2) as aux_fp2, open(aux_file3) as aux_fp3:
+            # this should work with the defaults in UPLOAD_FORMSET_DATA
+            response = self.c.post( \
+                    reverse('xasdb1:upload'), \
+                    dict(UPLOAD_FORMSET_DATA, **{ \
+                        'upload_file':fp, \
+                        'upload_file_doi':DOI, \
+                        'form-TOTAL_FORMS': '3', \
+                        'form-0-aux_description': aux_desc1, \
+                        'form-0-aux_file': aux_fp1, \
+                        'form-1-aux_description': aux_desc2, \
+                        'form-1-aux_file': aux_fp2, \
+                        'form-2-aux_description': aux_desc3, \
+                        'form-2-aux_file': aux_fp3, \
+                        } 
+                    ), follow=True)
+        xas_file = XASFile.objects.all()[0]
+        self.assertRedirects(response, reverse('xasdb1:file', args=[xas_file.id]))
+        self.assertContains(response, 'File uploaded')
+        self.assertContains(response, 'class="bk-root"', count=1)
+        self.assertEqual(XASFile.objects.count(), 1)
+        self.xas_file = xas_file
+        self.aux_file_description1 = xas_file.xasuploadauxdata_set.get(pk=1).aux_description
+        self.aux_file_description2 = xas_file.xasuploadauxdata_set.get(pk=2).aux_description
+        self.aux_file_description3 = xas_file.xasuploadauxdata_set.get(pk=3).aux_description
+        # logout
+        response = self.c.get(reverse('xasdb1:logout'))
+        self.assertRedirects(response, reverse('xasdb1:index'))
+
+    def test_login_as_same_user(self):
+        # users should never be able to access forms or do POST requests
+        login = self.c.login(username=USERNAME, password=PASSWORD)
+        self.assertTrue(login)
+        response = self.c.get(reverse('xasdb1:file', args=[self.xas_file.id]), follow=True)
+        self.assertContains(response, f'Spectrum: {self.xas_file.sample_name}')
+        self.assertContains(response, 'Submission Status')
+        self.assertContains(response, 'Pending')
+        response = self.c.post(reverse('xasdb1:file', args=[self.xas_file.id]), {'review_status': XASFile.APPROVED}, follow=True)
+        self.assertRedirects(response, reverse('xasdb1:index'))
+        self.assertContains(response, 'Only staff can make file POST requests!')
+
+    def test_login_as_different_user(self):
+        # users should never be able to access forms or do POST requests
+        new_user = User.objects.create_user(username=2*USERNAME, password=2*PASSWORD)
+        login = self.c.login(username=2*USERNAME, password=2*PASSWORD)
+        self.assertTrue(login)
+        response = self.c.get(reverse('xasdb1:file', args=[self.xas_file.id]), follow=True)
+        self.assertRedirects(response, reverse('xasdb1:index'))
+        self.assertContains(response, 'The requested file is not accessible')
+        response = self.c.post(reverse('xasdb1:file', args=[self.xas_file.id]), {'review_status': XASFile.APPROVED}, follow=True)
+        self.assertRedirects(response, reverse('xasdb1:index'))
+        self.assertContains(response, 'The requested file is not accessible')
+
+    def test_without_login(self):
+        # users should never be able to access forms or do POST requests
+        response = self.c.get(reverse('xasdb1:file', args=[self.xas_file.id]), follow=True)
+        self.assertRedirects(response, reverse('xasdb1:index'))
+        self.assertContains(response, 'The requested file is not accessible')
+        response = self.c.post(reverse('xasdb1:file', args=[self.xas_file.id]), {'review_status': XASFile.APPROVED}, follow=True)
+        self.assertRedirects(response, reverse('xasdb1:index'))
+        self.assertContains(response, 'The requested file is not accessible')
+
+    def test_as_admin(self):
+        User.objects.create_superuser(username=2*USERNAME, password=2*PASSWORD, email='test@example.com')
+        login = self.c.login(username=2*USERNAME, password=2*PASSWORD)
+        self.assertTrue(login)
+
+        BASE_DICT = model_to_dict(self.xas_file) # convert instance do POST style dict
+        BASE_DICT.update(**{\
+            'xasuploadauxdata_set-TOTAL_FORMS': '3', \
+            'xasuploadauxdata_set-INITIAL_FORMS': '3', \
+            'xasuploadauxdata_set-MIN_NUM_FORMS': '0', \
+            'xasuploadauxdata_set-MAX_NUM_FORMS': '10', \
+            'xasuploadauxdata_set-0-id' : self.xas_file.xasuploadauxdata_set.get(pk=1).id, \
+            'xasuploadauxdata_set-0-aux_description' : self.xas_file.xasuploadauxdata_set.get(pk=1).aux_description, \
+            'xasuploadauxdata_set-1-id' : self.xas_file.xasuploadauxdata_set.get(pk=2).id, \
+            'xasuploadauxdata_set-1-aux_description' : self.xas_file.xasuploadauxdata_set.get(pk=2).aux_description, \
+            'xasuploadauxdata_set-2-id' : self.xas_file.xasuploadauxdata_set.get(pk=3).id, \
+            'xasuploadauxdata_set-2-aux_description' : self.xas_file.xasuploadauxdata_set.get(pk=3).aux_description \
+        })
+        
+        response = self.c.get(reverse('xasdb1:file', args=[self.xas_file.id]), follow=True)
+        self.assertContains(response, f'Spectrum: {self.xas_file.sample_name}')
+        self.assertNotContains(response, 'Submission Status')
+        self.assertContains(response, 'Review status')
+        self.assertContains(response, 'selected>Pending')
+        self.assertEqual(self.xas_file.review_status, XASFile.PENDING)
+        response = self.c.post( \
+            reverse('xasdb1:file', args=[self.xas_file.id]),\
+            dict(BASE_DICT,
+                **{\
+                    'review_status': XASFile.APPROVED, \
+                    'xasuploadauxdata_set-1-aux_description' : 'new-description', \
+                }\
+            ),\
+            follow=True)
+        self.assertContains(response, 'Review status')
+        self.assertContains(response, 'selected>Approved')
+        #print(f'response: {response.content}')
+        self.xas_file = XASFile.objects.all()[0]
+        self.aux_file_description2 = 'new-description'
+        self.assertEqual(self.xas_file.review_status, XASFile.APPROVED)
+        self.assertEqual(self.aux_file_description1, self.xas_file.xasuploadauxdata_set.get(pk=1).aux_description)
+        self.assertEqual(self.aux_file_description2, self.xas_file.xasuploadauxdata_set.get(pk=2).aux_description)
+        self.assertEqual(self.aux_file_description3, self.xas_file.xasuploadauxdata_set.get(pk=3).aux_description)
+        self.assertContains(response, 'File information updated')
+        self.assertNotContains(response, 'Could not update file: check error messages below')
+
+        # try setting descriptions to identical strings
+        response = self.c.post( \
+            reverse('xasdb1:file', args=[self.xas_file.id]),\
+            dict(BASE_DICT,
+                **{\
+                'review_status': XASFile.REJECTED, \
+                    'xasuploadauxdata_set-0-aux_description' : 'some-string', \
+                    'xasuploadauxdata_set-1-aux_description' : 'some-string', \
+                    'xasuploadauxdata_set-2-aux_description' : self.xas_file.xasuploadauxdata_set.get(pk=3).aux_description
+                }\
+            ),\
+            follow=True)
+        self.assertContains(response, 'Review status')
+        self.assertContains(response, 'selected>Rejected')
+        self.assertContains(response, 'Could not update file: check error messages below')
+        self.assertContains(response, 'Auxiliary data must contain unique descriptions')
+        self.xas_file = XASFile.objects.all()[0]
+        self.assertEqual(self.xas_file.review_status, XASFile.APPROVED)
+        self.assertEqual(self.aux_file_description1, self.xas_file.xasuploadauxdata_set.get(pk=1).aux_description)
+        self.assertEqual(self.aux_file_description2, self.xas_file.xasuploadauxdata_set.get(pk=2).aux_description)
+        self.assertEqual(self.aux_file_description3, self.xas_file.xasuploadauxdata_set.get(pk=3).aux_description)
+        
+        # try setting an empty description
+        response = self.c.post( \
+            reverse('xasdb1:file', args=[self.xas_file.id]),\
+            dict(BASE_DICT,
+                **{\
+                    'review_status': XASFile.PENDING, \
+                    'xasuploadauxdata_set-0-aux_description' : 'some-string', \
+                    'xasuploadauxdata_set-1-aux_description' : '', \
+                    'xasuploadauxdata_set-2-aux_description' : self.xas_file.xasuploadauxdata_set.get(pk=3).aux_description
+                }\
+            ),\
+            follow=True)
+        self.xas_file = XASFile.objects.all()[0]
+        self.assertEqual(self.xas_file.review_status, XASFile.APPROVED)
+        self.assertContains(response, 'Review status')
+        self.assertContains(response, 'selected>Pending')
+        self.assertContains(response, 'Could not update file: check error messages below')
+        self.assertContains(response, 'Unique description required')
+        self.assertContains(response, 'Valid auxiliary data consists of a unique description and a unique filename')
+        self.assertEqual(self.aux_file_description1, self.xas_file.xasuploadauxdata_set.get(pk=1).aux_description)
+        self.assertEqual(self.aux_file_description2, self.xas_file.xasuploadauxdata_set.get(pk=2).aux_description)
+        self.assertEqual(self.aux_file_description3, self.xas_file.xasuploadauxdata_set.get(pk=3).aux_description)
+    
+        # delete second file
+        response = self.c.post( \
+            reverse('xasdb1:file', args=[self.xas_file.id]),\
+            dict(BASE_DICT,
+                **{\
+                    'review_status': XASFile.PENDING, \
+                    'xasuploadauxdata_set-1-DELETE' : 'on'
+                }\
+            ),\
+            follow=True)
+        self.xas_file = XASFile.objects.all()[0]
+        self.assertEqual(self.xas_file.review_status, XASFile.PENDING)
+        self.assertContains(response, 'File information updated')
+        self.assertContains(response, 'Review status')
+        self.assertContains(response, 'selected>Pending')
+        self.assertNotContains(response, 'Could not update file: check error messages below')
+        self.assertEqual(self.xas_file.xasuploadauxdata_set.count(), 2)
+        self.assertEqual(self.aux_file_description1, self.xas_file.xasuploadauxdata_set.get(pk=1).aux_description)
+        self.assertEqual(self.aux_file_description3, self.xas_file.xasuploadauxdata_set.get(pk=3).aux_description)
+

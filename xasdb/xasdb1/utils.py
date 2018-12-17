@@ -20,8 +20,11 @@ def process_xdi_file(temp_xdi_file, request):
     xdi_file = xdifile.XDIFile(filename=temp_xdi_file)
     value.seek(0)
     element = xdi_file.element.decode('utf-8')
-    atomic_number = xrl.SymbolToAtomicNumber(element)
     edge = xdi_file.edge.decode('utf-8')
+    for pair in XASFile.EDGE_CHOICES:
+        if edge == pair[1]:
+            edge = pair[0]
+            break
     kwargs = dict()
     for kwarg in OPTIONAL_KWARGS:
         try:
@@ -93,7 +96,7 @@ def process_xdi_file(temp_xdi_file, request):
             refer_used = True
             arrays['irefer'] = xdi_file.i2
 
-        xas_file = XASFile(atomic_number=atomic_number, upload_file=value, upload_file_doi=request.POST['upload_file_doi'], uploader=request.user, element=element, edge=edge, refer_used=refer_used, **kwargs)
+        xas_file = XASFile(upload_file=value, upload_file_doi=request.POST['upload_file_doi'], uploader=request.user, element=element, edge=edge, refer_used=refer_used, **kwargs)
         xas_file.save()
 
         for mode in set(modes):

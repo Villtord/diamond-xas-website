@@ -24,9 +24,23 @@
 
 <br/>
 
+{% if user.is_staff or user.is_superuser %}
+<form enctype="multipart/form-data" method="post" id="upload_form">
+	{% csrf_token %}
+{% endif %}
+
 <table class="file-table-main">
+
+{% if user.is_staff or user.is_superuser %}
+<tr>
+	<th> Original Data File:</th>
+	<td> <a href="{% url 'xasdb1:download' file.upload_file.url %}">{{ file.name }}</a></td>
+</tr>
+{{ form.as_table}}
+
+{% else %}
 {% if user.is_authenticated %}
-{% if user == file.uploader and not user.is_staff and not user.is_superuser  %}
+{% if user == file.uploader %}
 <tr>
 	<td> Submission Status: </td>
 	<td> {{ file.get_review_status_display }} </td>
@@ -39,7 +53,7 @@
 {% endif %}
 <tr>
 	<td>Absorption Edge:</td>
-	<td><a href="{% url 'xasdb1:element' file.element %}">{{ file.element }}</a> {{file.edge}} edge</td>
+	<td><a href="{% url 'xasdb1:element' file.element %}">{{ file.element }}</a> {{ file.get_edge_display }} edge</td>
 </tr>
 <tr>
 	<td>Sample Name:</td>
@@ -63,7 +77,7 @@
 </tr>
 <tr>
 	<td>Date uploaded:</td>
-	<td>{{ file.upload_timestamp }}, {{ file.uploader.first_name }} {{ file.uploader.last_name }} ({{ file.uploader.email }})</td>
+	<td>{{ file.upload_timestamp }}, {{ file.uploader.first_name }} {{ file.uploader.last_name }}</td>
 </tr>
 {% if doi %}
 <tr>
@@ -71,10 +85,39 @@
 	<td><a href="{{ doi.url }}">{{doi.citation | safe }} Times cited: {{doi.ncited}}</a></td>
 </tr>
 {% endif %}
+{% endif %}
 
 </table>
 
-{% if user.is_authenticated and aux %}
+{% if user.is_staff or user.is_superuser %}
+<br/>
+{{ formset.management_form }}
+{% for upload_aux_form in formset %}
+	{{ upload_aux_form.id }}
+	<div class="upload_aux_formset">
+		{{ upload_aux_form.aux_description.label }}
+		{{ upload_aux_form.aux_description }}
+		{% if upload_aux_form.aux_description.errors %}
+			<div class="upload_aux_formset_error">
+			{% for error in upload_aux_form.aux_description.errors %}
+				{{ error|escape }}
+			{% endfor %}
+			</div>
+		{% endif %}
+
+		<a href="{% url 'xasdb1:download' upload_aux_form.instance.aux_file.url %}">{{ upload_aux_form.instance.name }}</a>
+		Delete? {{ upload_aux_form.DELETE }}
+	</div>
+	{% endfor %}
+	{% if formset.non_form_errors %}
+		<div class="upload_aux_formset_error">
+		{% for error in formset.non_form_errors %}
+			{{ error|escape }}
+		{% endfor %}
+		</div>
+	{% endif %}
+
+{% elif user.is_authenticated and aux %}
 <br/>
 <table class="file-table-aux">
 <tr>
@@ -89,6 +132,12 @@
 {% endfor %}
 </table>
 {% endif %}
+
+{% if user.is_staff or user.is_superuser %}
+<input type="submit" name="submit" value="Update!">
+</form>
+{% endif %}
+
 {% endblock %}
 
 

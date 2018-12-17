@@ -29,7 +29,7 @@
 		{% for file in files %}
 		<tr>
 			<td><a href="{% url 'xasdb1:file' file.id %}">{{ file.sample_name }}</a></td>
-			<td>{{ file.edge }}</td>
+			<td>{{ file.get_edge_display }}</td>
 			<td>{{ file.beamline_name}} @ {{file.facility_name}}</td>
 		</tr>
 		{% endfor %}

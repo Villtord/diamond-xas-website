@@ -6,6 +6,7 @@ import django
 import xdifile
 import tempfile
 import os.path
+import xraylib as xrl
 from habanero import Crossref
 
 XDI_TMP_DIR = tempfile.TemporaryDirectory()
@@ -22,6 +23,14 @@ def file_size_valid(value):
     limit = 10 * 1024 * 1024 # 10 MB
     if value.size > limit:
         raise ValidationError('File size is limited to 10 MB!')
+
+def mendeljev_valid(value):
+    try:
+        atomic_number = xrl.SymbolToAtomicNumber(value)
+        if atomic_number == 0:
+            raise Exception()
+    except Exception:
+        raise ValidationError(f"Unknown chemical element {value}")
 
 def xdi_valid(value):
     temp_xdi_file = os.path.join(XDI_TMP_DIR.name, value.name)
@@ -44,13 +53,13 @@ class XASFile(models.Model):
     REJECTED = 2
     REVIEW_STATUS_CHOICES = ((PENDING, "Pending"), (APPROVED, "Approved"), (REJECTED, "Rejected"))
 
+    EDGE_CHOICES = ((xrl.K_SHELL, "K"), (xrl.L1_SHELL, "L1"), (xrl.L2_SHELL, "L2"), (xrl.L3_SHELL, "L3"))
 
     upload_file = models.FileField(upload_to='uploads/%Y/%m/%d/', validators=[file_size_valid, xdi_valid])
     upload_file_doi = models.CharField('Citation DOI', max_length=256, default='', validators=[doi_valid])
     upload_timestamp = models.DateTimeField('date published', auto_now_add=True)
-    atomic_number = models.IntegerField(default=0)
-    element = models.CharField(max_length=3, default='')
-    edge = models.CharField(max_length=3, default='')
+    element = models.CharField(max_length=3, validators=[mendeljev_valid])
+    edge = models.SmallIntegerField(choices=EDGE_CHOICES, default=xrl.K_SHELL)
     uploader = models.ForeignKey(User, on_delete=models.SET_NULL, null=True)
     review_status = models.SmallIntegerField(choices=REVIEW_STATUS_CHOICES, default=PENDING)
     sample_name = models.CharField(max_length=100, default='unknown')

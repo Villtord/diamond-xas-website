@@ -1,14 +1,11 @@
-from django.forms import (Form, FileField, ModelForm, CharField, EmailField, TextInput, BaseModelFormSet, modelformset_factory)
+from django.forms import (Form, FileField, ModelForm, CharField, EmailField, TextInput, BaseModelFormSet, modelformset_factory, inlineformset_factory, BaseInlineFormSet)
 from django.forms.widgets import FileInput
 from django.contrib.auth.forms import UserCreationForm
 from django.core.exceptions import ValidationError
 from django.contrib.auth.models import User
 from .models import XASFile, XASUploadAuxData
 
-class FormWithFileField(Form):
-    download_file = FileField()
-
-class ModelFormWithFileField(ModelForm):
+class XASFileSubmissionForm(ModelForm):
     class Meta:
         model = XASFile
         fields = ['upload_file', 'upload_file_doi']
@@ -16,16 +13,22 @@ class ModelFormWithFileField(ModelForm):
                 "upload_file_doi": TextInput(attrs={'onkeyup': "getDOI(this.value)"})
         }
 
+class XASFileVerificationForm(ModelForm):
+    class Meta:
+        model = XASFile
+        fields = ['review_status', 'upload_file_doi', 'element', 'edge', 'sample_name', 'sample_prep', 'beamline_name', 'facility_name', 'mono_name', 'mono_d_spacing']
+
+
 class XASUploadAuxDataForm(ModelForm):
     class Meta:
         model = XASUploadAuxData
         fields = ('aux_description', 'aux_file')
         widgets = {'aux_file': FileInput(attrs={'class': 'aux_file_class'})} # I do not like the default ClearableFileInput form widget
 
+
 class XASUploadAuxDataBaseFormSet(BaseModelFormSet):
     def clean(self):
-        #print('Entering XASUploadAuxDataBaseFormSet::clean')
-
+        super().clean()
         descriptions = []
         files = []
 
@@ -60,7 +63,29 @@ class XASUploadAuxDataBaseFormSet(BaseModelFormSet):
                         form.add_error('aux_file', 'Unique filename required')
                     raise ValidationError('Valid auxiliary data consists of a unique description and a unique filename')
 
+class XASUploadAuxDataBaseVerificationFormSet(BaseInlineFormSet):
+    def clean(self):
+        super().clean()
+        # need to ensure all descriptions are unique!
+        descriptions = []
+
+        for index, form in enumerate(self.forms):
+            #print(f'{index}')
+            if form.cleaned_data:
+                description = form.cleaned_data['aux_description']
+                #print(f'x{description}x')
+                #print(f'x{file}x')
+                if description:
+                    if description in descriptions:
+                        raise ValidationError('Auxiliary data must contain unique descriptions')
+                    descriptions.append(description)
+                else:
+                    form.add_error('aux_description', 'Unique description required')
+                    raise ValidationError('Valid auxiliary data consists of a unique description and a unique filename')
+
 XASUploadAuxDataFormSet = modelformset_factory(XASUploadAuxData, form=XASUploadAuxDataForm, formset=XASUploadAuxDataBaseFormSet, max_num=10, extra=1, validate_max=True)
+
+XASUploadAuxDataVerificationFormSet = inlineformset_factory(XASFile, XASUploadAuxData, formset=XASUploadAuxDataBaseVerificationFormSet, fields=('aux_description', ), extra=0, max_num=10, validate_max=True)
 
 class XASDBUserCreationForm(UserCreationForm):
     first_name = CharField(max_length=100, min_length=1)
