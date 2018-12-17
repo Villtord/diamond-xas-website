@@ -7,7 +7,7 @@ install:
         - hash -r
         - conda config --set always_yes yes
         - conda update -q conda
-        - conda install django bokeh
+        - conda install django bokeh sqlite=3.25.3
         - conda install -c conda-forge xraylib habanero
         # install xdi...
         - pushd $HOME
