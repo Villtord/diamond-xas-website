@@ -136,5 +136,7 @@ FILE_UPLOAD_DIRECTORY_PERMISSIONS = 0o700
 # email stuff
 ADMINS = [('Tom Schoonjans', 'Tom.Schoonjans@diamond.ac.uk')]
 EMAIL_BACKEND = 'django.core.mail.backends.smtp.EmailBackend'
+EMAIL_SUBJECT_PREFIX = '[XASDB] '
+SERVER_EMAIL = "donotreply@xasdb.diamond.ac.uk"
 
 

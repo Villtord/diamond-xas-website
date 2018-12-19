@@ -16,6 +16,8 @@ from django.db.models import Q
 
 from django.utils.encoding import smart_str
 
+from django.core.mail import mail_admins
+
 from .forms import XASFileSubmissionForm, XASDBUserCreationForm, XASUploadAuxDataFormSet, XASFileVerificationForm, XASUploadAuxDataVerificationFormSet
 from .models import XASFile, XASMode, XASArray, XASUploadAuxData
 from .utils import process_xdi_file
@@ -34,6 +36,8 @@ import os.path
 import base64
 from habanero import Crossref
 import traceback
+
+HOST = 'https://xasdb.diamond.ac.uk'
 
 XDI_TMP_DIR = tempfile.TemporaryDirectory()
 
@@ -132,7 +136,15 @@ def upload(request):
                 except:
                     pass
             messages.success(request, 'File uploaded')
-            return redirect('xasdb1:file', xas_file.id)
+
+            new_redirect = redirect('xasdb1:file', xas_file.id)
+            # send email to maintainers
+            mail_admins( \
+                'a new dataset has been uploaded', \
+                'A new dataset has been uploaded by {} ({}).\nPlease process this submission by visiting {}.'.format(request.user.get_full_name(), request.user.email, HOST + new_redirect.url))
+
+
+            return new_redirect
     else:
         form = XASFileSubmissionForm()
         data = {

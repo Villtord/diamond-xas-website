@@ -3,9 +3,11 @@ from django.test import override_settings
 from django.urls import reverse
 from django.contrib.auth.models import User
 from django.forms.models import model_to_dict
+from django.core import mail
 
-from xasdb.settings import BASE_DIR
+from django.conf import settings
 from .models import XASFile, XASUploadAuxData
+from .views import HOST
 
 from os.path import join, exists, basename, getsize
 import tempfile
@@ -23,7 +25,13 @@ LAST_NAME = 'Doe'
 EMAIL = 'John.Doe@diamond.ac.uk'
 DOI = '10.1016/j.sab.2011.09.011' # xraylib!
 
+SU_USERNAME = 'jhpwejfpfjfpwqjfwq'
+SU_PASSWORD = 'jwejfpfjwfepqwjpqfjpfj'
+SU_EMAIL = 'admin@xasdb.diamond.ac.uk'
+
 TEMPDIR = tempfile.TemporaryDirectory()
+
+OVERRIDE_SETTINGS = dict(MEDIA_ROOT=TEMPDIR.name, EMAIL_BACKEND = 'django.core.mail.backends.locmem.EmailBackend')
 
 UPLOAD_FORMSET_DATA = {
     'form-TOTAL_FORMS': '1',
@@ -87,22 +95,23 @@ class LoginTests(TestCase):
         response = c.get(reverse('xasdb1:logout'))
         self.assertRedirects(response, reverse('xasdb1:index'))
 
-@override_settings(MEDIA_ROOT=TEMPDIR.name)
+@override_settings(**OVERRIDE_SETTINGS)
 class UploadTests(TestCase):
 
     def setUp(self):
         # let's assume that registering works fine via the view..
-        self.user = User.objects.create_user(username=USERNAME, password=PASSWORD)
+        self.user = User.objects.create_user(username=USERNAME, password=PASSWORD, first_name=FIRST_NAME, last_name=LAST_NAME, email=EMAIL)
 
     def test_without_login(self):
         c = Client()
-        test_file = join(BASE_DIR, 'xasdb1', 'testdata', 'good', 'fe3c_rt.xdi')
+        test_file = join(settings.BASE_DIR, 'xasdb1', 'testdata', 'good', 'fe3c_rt.xdi')
         self.assertTrue(exists(test_file))
         with open(test_file) as fp:
             response = c.post(reverse('xasdb1:upload'), dict(UPLOAD_FORMSET_DATA, upload_file=fp), follow=True)
         self.assertRedirects(response, '/xasdb1/login/?next=/xasdb1/upload/')
         self.assertContains(response, 'Login')
         self.assertEqual(XASFile.objects.count(), 0)
+        self.assertFalse(mail.outbox)
 
     def test_get(self):
         c = Client()
@@ -118,22 +127,24 @@ class UploadTests(TestCase):
         response = c.post(reverse('xasdb1:login'), {'username': USERNAME, 'password': PASSWORD}, follow=True)
         self.assertRedirects(response, reverse('xasdb1:index'))
         self.assertContains(response, USERNAME  + ' logged in!')
-        test_file = join(BASE_DIR, 'xasdb1', 'testdata', 'good', 'fe3c_rt.xdi')
+        test_file = join(settings.BASE_DIR, 'xasdb1', 'testdata', 'good', 'fe3c_rt.xdi')
         self.assertTrue(exists(test_file))
         with open(test_file) as fp:
             response = c.post(reverse('xasdb1:upload'), dict(UPLOAD_FORMSET_DATA, upload_file=fp, upload_file_doi='rubbish-doi'), follow=True)
         self.assertContains(response, 'Invalid DOI: 404 Client Error: Not Found for url: https://api.crossref.org/works/rubbish-doi')
+        self.assertFalse(mail.outbox)
 
     def test_bad_file_good_doi(self):
         c = Client()
         response = c.post(reverse('xasdb1:login'), {'username': USERNAME, 'password': PASSWORD}, follow=True)
         self.assertRedirects(response, reverse('xasdb1:index'))
         self.assertContains(response, USERNAME  + ' logged in!')
-        test_file = join(BASE_DIR, 'xasdb1', 'testdata', 'bad', 'bad_01.xdi')
+        test_file = join(settings.BASE_DIR, 'xasdb1', 'testdata', 'bad', 'bad_01.xdi')
         self.assertTrue(exists(test_file))
         with open(test_file) as fp:
             response = c.post(reverse('xasdb1:upload'), dict(UPLOAD_FORMSET_DATA, upload_file=fp, upload_file_doi=DOI), follow=True)
         self.assertContains(response, 'not an XDI file')
+        self.assertFalse(mail.outbox)
 
     def test_huge_file_good_doi(self):
         c = Client()
@@ -148,13 +159,14 @@ class UploadTests(TestCase):
         with open(test_file, 'rb') as fp:
             response = c.post(reverse('xasdb1:upload'), dict(UPLOAD_FORMSET_DATA, upload_file=fp, upload_file_doi=DOI), follow=True)
         self.assertContains(response, 'File size is limited to 10 MB!')
+        self.assertFalse(mail.outbox)
 
     def test_good_file_good_doi(self):
         c = Client()
         response = c.post(reverse('xasdb1:login'), {'username': USERNAME, 'password': PASSWORD}, follow=True)
         self.assertRedirects(response, reverse('xasdb1:index'))
         self.assertContains(response, USERNAME  + ' logged in!')
-        test_file = join(BASE_DIR, 'xasdb1', 'testdata', 'good', 'fe3c_rt.xdi')
+        test_file = join(settings.BASE_DIR, 'xasdb1', 'testdata', 'good', 'fe3c_rt.xdi')
         self.assertTrue(exists(test_file))
         with open(test_file) as fp:
             response = c.post(reverse('xasdb1:upload'), dict(UPLOAD_FORMSET_DATA, upload_file=fp, upload_file_doi=DOI), follow=True)
@@ -169,14 +181,21 @@ class UploadTests(TestCase):
         self.assertEqual(xas_file.edge, xrl.K_SHELL)
         self.assertEqual(xas_file.uploader.username, USERNAME)
         self.assertEqual(xas_file.review_status, XASFile.PENDING)
+        self.assertEqual(len(mail.outbox), 1)
+        email = mail.outbox[0]
+        self.assertEqual(email.subject, settings.EMAIL_SUBJECT_PREFIX + 'a new dataset has been uploaded')
+        self.assertEqual(email.body, 'A new dataset has been uploaded by {} ({}).\nPlease process this submission by visiting {}.'.format(self.user.get_full_name(), self.user.email, HOST + reverse('xasdb1:file', args=[xas_file.id])))
+        self.assertEqual(email.from_email, settings.SERVER_EMAIL)
+        self.assertEqual(len(email.to), 1)
+        self.assertTrue(email.to[0] in map(lambda x: x[1], settings.ADMINS))
 
     def test_single_aux_single_file_valid(self):
         c = Client()
         response = c.post(reverse('xasdb1:login'), {'username': USERNAME, 'password': PASSWORD}, follow=True)
         self.assertRedirects(response, reverse('xasdb1:index'))
         self.assertContains(response, USERNAME  + ' logged in!')
-        test_file = join(BASE_DIR, 'xasdb1', 'testdata', 'good', 'fe3c_rt.xdi')
-        aux_file1 = join(BASE_DIR, 'xasdb1', 'testdata', 'bad', 'bad_01.xdi')
+        test_file = join(settings.BASE_DIR, 'xasdb1', 'testdata', 'good', 'fe3c_rt.xdi')
+        aux_file1 = join(settings.BASE_DIR, 'xasdb1', 'testdata', 'bad', 'bad_01.xdi')
         self.assertTrue(exists(test_file))
         self.assertTrue(exists(aux_file1))
         aux_desc1 = ''.join(random.choices(string.ascii_uppercase + string.digits, k=10))
@@ -201,7 +220,7 @@ class UploadTests(TestCase):
         response = c.post(reverse('xasdb1:login'), {'username': USERNAME, 'password': PASSWORD}, follow=True)
         self.assertRedirects(response, reverse('xasdb1:index'))
         self.assertContains(response, USERNAME  + ' logged in!')
-        test_file = join(BASE_DIR, 'xasdb1', 'testdata', 'good', 'fe3c_rt.xdi')
+        test_file = join(settings.BASE_DIR, 'xasdb1', 'testdata', 'good', 'fe3c_rt.xdi')
         self.assertTrue(exists(test_file))
         with open(test_file) as fp:
             # this should work with the defaults in UPLOAD_FORMSET_DATA
@@ -221,7 +240,7 @@ class UploadTests(TestCase):
         response = c.post(reverse('xasdb1:login'), {'username': USERNAME, 'password': PASSWORD}, follow=True)
         self.assertRedirects(response, reverse('xasdb1:index'))
         self.assertContains(response, USERNAME  + ' logged in!')
-        test_file = join(BASE_DIR, 'xasdb1', 'testdata', 'good', 'fe3c_rt.xdi')
+        test_file = join(settings.BASE_DIR, 'xasdb1', 'testdata', 'good', 'fe3c_rt.xdi')
         self.assertTrue(exists(test_file))
         aux_desc1 = ''.join(random.choices(string.ascii_uppercase + string.digits, k=10))
         with open(test_file) as fp:
@@ -235,8 +254,8 @@ class UploadTests(TestCase):
         response = c.post(reverse('xasdb1:login'), {'username': USERNAME, 'password': PASSWORD}, follow=True)
         self.assertRedirects(response, reverse('xasdb1:index'))
         self.assertContains(response, USERNAME  + ' logged in!')
-        test_file = join(BASE_DIR, 'xasdb1', 'testdata', 'good', 'fe3c_rt.xdi')
-        aux_file1 = join(BASE_DIR, 'xasdb1', 'testdata', 'bad', 'bad_01.xdi')
+        test_file = join(settings.BASE_DIR, 'xasdb1', 'testdata', 'good', 'fe3c_rt.xdi')
+        aux_file1 = join(settings.BASE_DIR, 'xasdb1', 'testdata', 'bad', 'bad_01.xdi')
         self.assertTrue(exists(test_file))
         self.assertTrue(exists(aux_file1))
         with open(test_file) as fp, open(aux_file1) as aux_fp1:
@@ -250,9 +269,9 @@ class UploadTests(TestCase):
         response = c.post(reverse('xasdb1:login'), {'username': USERNAME, 'password': PASSWORD}, follow=True)
         self.assertRedirects(response, reverse('xasdb1:index'))
         self.assertContains(response, USERNAME  + ' logged in!')
-        test_file = join(BASE_DIR, 'xasdb1', 'testdata', 'good', 'fe3c_rt.xdi')
-        aux_file1 = join(BASE_DIR, 'xasdb1', 'testdata', 'bad', 'bad_01.xdi')
-        aux_file2 = join(BASE_DIR, 'xasdb1', 'testdata', 'bad', 'bad_02.xdi')
+        test_file = join(settings.BASE_DIR, 'xasdb1', 'testdata', 'good', 'fe3c_rt.xdi')
+        aux_file1 = join(settings.BASE_DIR, 'xasdb1', 'testdata', 'bad', 'bad_01.xdi')
+        aux_file2 = join(settings.BASE_DIR, 'xasdb1', 'testdata', 'bad', 'bad_02.xdi')
         self.assertTrue(exists(test_file))
         self.assertTrue(exists(aux_file1))
         self.assertTrue(exists(aux_file2))
@@ -280,8 +299,8 @@ class UploadTests(TestCase):
         response = c.post(reverse('xasdb1:login'), {'username': USERNAME, 'password': PASSWORD}, follow=True)
         self.assertRedirects(response, reverse('xasdb1:index'))
         self.assertContains(response, USERNAME  + ' logged in!')
-        test_file = join(BASE_DIR, 'xasdb1', 'testdata', 'good', 'fe3c_rt.xdi')
-        aux_file2 = join(BASE_DIR, 'xasdb1', 'testdata', 'bad', 'bad_02.xdi')
+        test_file = join(settings.BASE_DIR, 'xasdb1', 'testdata', 'good', 'fe3c_rt.xdi')
+        aux_file2 = join(settings.BASE_DIR, 'xasdb1', 'testdata', 'bad', 'bad_02.xdi')
         self.assertTrue(exists(test_file))
         self.assertTrue(exists(aux_file2))
         aux_desc2 = ''.join(random.choices(string.ascii_uppercase + string.digits, k=10))
@@ -304,8 +323,8 @@ class UploadTests(TestCase):
         response = c.post(reverse('xasdb1:login'), {'username': USERNAME, 'password': PASSWORD}, follow=True)
         self.assertRedirects(response, reverse('xasdb1:index'))
         self.assertContains(response, USERNAME  + ' logged in!')
-        test_file = join(BASE_DIR, 'xasdb1', 'testdata', 'good', 'fe3c_rt.xdi')
-        aux_file1 = join(BASE_DIR, 'xasdb1', 'testdata', 'bad', 'bad_01.xdi')
+        test_file = join(settings.BASE_DIR, 'xasdb1', 'testdata', 'good', 'fe3c_rt.xdi')
+        aux_file1 = join(settings.BASE_DIR, 'xasdb1', 'testdata', 'bad', 'bad_01.xdi')
         self.assertTrue(exists(test_file))
         self.assertTrue(exists(aux_file1))
         aux_desc1 = ''.join(random.choices(string.ascii_uppercase + string.digits, k=10))
@@ -328,9 +347,9 @@ class UploadTests(TestCase):
         response = c.post(reverse('xasdb1:login'), {'username': USERNAME, 'password': PASSWORD}, follow=True)
         self.assertRedirects(response, reverse('xasdb1:index'))
         self.assertContains(response, USERNAME  + ' logged in!')
-        test_file = join(BASE_DIR, 'xasdb1', 'testdata', 'good', 'fe3c_rt.xdi')
-        aux_file1 = join(BASE_DIR, 'xasdb1', 'testdata', 'bad', 'bad_01.xdi')
-        aux_file2 = join(BASE_DIR, 'xasdb1', 'testdata', 'bad', 'bad_02.xdi')
+        test_file = join(settings.BASE_DIR, 'xasdb1', 'testdata', 'good', 'fe3c_rt.xdi')
+        aux_file1 = join(settings.BASE_DIR, 'xasdb1', 'testdata', 'bad', 'bad_01.xdi')
+        aux_file2 = join(settings.BASE_DIR, 'xasdb1', 'testdata', 'bad', 'bad_02.xdi')
         self.assertTrue(exists(test_file))
         self.assertTrue(exists(aux_file1))
         self.assertTrue(exists(aux_file2))
@@ -345,8 +364,8 @@ class UploadTests(TestCase):
         response = c.post(reverse('xasdb1:login'), {'username': USERNAME, 'password': PASSWORD}, follow=True)
         self.assertRedirects(response, reverse('xasdb1:index'))
         self.assertContains(response, USERNAME  + ' logged in!')
-        test_file = join(BASE_DIR, 'xasdb1', 'testdata', 'good', 'fe3c_rt.xdi')
-        aux_file = join(BASE_DIR, 'xasdb1', 'testdata', 'bad', 'bad_01.xdi')
+        test_file = join(settings.BASE_DIR, 'xasdb1', 'testdata', 'good', 'fe3c_rt.xdi')
+        aux_file = join(settings.BASE_DIR, 'xasdb1', 'testdata', 'bad', 'bad_01.xdi')
         self.assertTrue(exists(test_file))
         self.assertTrue(exists(aux_file))
         aux_desc1 = ''.join(random.choices(string.ascii_uppercase + string.digits, k=10))
@@ -361,7 +380,7 @@ class UploadTests(TestCase):
         response = c.post(reverse('xasdb1:login'), {'username': USERNAME, 'password': PASSWORD}, follow=True)
         self.assertRedirects(response, reverse('xasdb1:index'))
         self.assertContains(response, USERNAME  + ' logged in!')
-        test_file = join(BASE_DIR, 'xasdb1', 'testdata', 'good', 'fe3c_rt.xdi')
+        test_file = join(settings.BASE_DIR, 'xasdb1', 'testdata', 'good', 'fe3c_rt.xdi')
         aux_file = join(TEMPDIR.name, 'huge.xdi')
         with open(aux_file, 'wb') as fp:
             fp.write(os.urandom(20 * 1024 * 1024))
@@ -375,7 +394,7 @@ class UploadTests(TestCase):
         self.assertContains(response, 'File size is limited to 10 MB!')
         self.assertEqual(XASFile.objects.count(), 0)
 
-@override_settings(MEDIA_ROOT=TEMPDIR.name)
+@override_settings(**OVERRIDE_SETTINGS)
 class ElementTestsCreateAndLoginAsUser(TestCase):
 
     def setUp(self):
@@ -386,12 +405,12 @@ class ElementTestsCreateAndLoginAsUser(TestCase):
         response = self.c.post(reverse('xasdb1:login'), {'username': USERNAME, 'password': PASSWORD}, follow=True)
         self.assertRedirects(response, reverse('xasdb1:index'))
         self.assertContains(response, USERNAME  + ' logged in!')
-        test_dir = join(BASE_DIR, 'xasdb1', 'testdata', 'good')
+        test_dir = join(settings.BASE_DIR, 'xasdb1', 'testdata', 'good')
         self.xdi_files = os.listdir(test_dir)
         self.assertTrue(len(self.xdi_files) > 0)
         
         for xdi_file in self.xdi_files:
-            test_file = join(BASE_DIR, 'xasdb1', 'testdata', 'good', xdi_file)
+            test_file = join(settings.BASE_DIR, 'xasdb1', 'testdata', 'good', xdi_file)
             self.assertTrue(exists(test_file))
             with open(test_file) as fp:
                 response = self.c.post(reverse('xasdb1:upload'), dict(UPLOAD_FORMSET_DATA, upload_file=fp, upload_file_doi=DOI), follow=True)
@@ -402,7 +421,15 @@ class ElementTestsCreateAndLoginAsUser(TestCase):
             self.assertContains(response, 'class="bk-root"', count=1)
             self.assertContains(response, 'Submission Status', count=1)
             self.assertContains(response, 'Pending', count=1)
+            email = mail.outbox[-1]
+            self.assertEqual(email.subject, settings.EMAIL_SUBJECT_PREFIX + 'a new dataset has been uploaded')
+            self.assertEqual(email.body, 'A new dataset has been uploaded by {} ({}).\nPlease process this submission by visiting {}.'.format(self.user.get_full_name(), self.user.email, HOST + reverse('xasdb1:file', args=[xas_file.id])))
+            self.assertEqual(email.from_email, settings.SERVER_EMAIL)
+            self.assertEqual(len(email.to), 1)
+            self.assertTrue(email.to[0] in map(lambda x: x[1], settings.ADMINS))
+
         self.assertEqual(XASFile.objects.count(), len(self.xdi_files))
+        self.assertEqual(len(mail.outbox), len(self.xdi_files))
 
     def test_element_no_files(self):
         # pretty sure there's no uranium data
@@ -417,23 +444,23 @@ class ElementTestsCreateAndLoginAsUser(TestCase):
         response = self.c.get(reverse('xasdb1:element', args=['Zn']))
         self.assertContains(response, '1 spectrum found for Zn')
 
-@override_settings(MEDIA_ROOT=TEMPDIR.name)
+@override_settings(**OVERRIDE_SETTINGS)
 class ElementTestsCreateAndLoginAsAdmin(TestCase):
 
     def setUp(self):
         # let's assume that registering works fine via the view..
-        self.user = User.objects.create_superuser(username=USERNAME, password=PASSWORD, email='test@example.com')
+        self.user = User.objects.create_superuser(username=SU_USERNAME, password=SU_PASSWORD, email=SU_EMAIL)
         # populate database with all good xdi files
         self.c = Client()
-        response = self.c.post(reverse('xasdb1:login'), {'username': USERNAME, 'password': PASSWORD}, follow=True)
+        response = self.c.post(reverse('xasdb1:login'), {'username': SU_USERNAME, 'password': SU_PASSWORD}, follow=True)
         self.assertRedirects(response, reverse('xasdb1:index'))
-        self.assertContains(response, USERNAME  + ' logged in!')
-        test_dir = join(BASE_DIR, 'xasdb1', 'testdata', 'good')
+        self.assertContains(response, SU_USERNAME  + ' logged in!')
+        test_dir = join(settings.BASE_DIR, 'xasdb1', 'testdata', 'good')
         self.xdi_files = os.listdir(test_dir)
         self.assertTrue(len(self.xdi_files) > 0)
         
         for xdi_file in self.xdi_files:
-            test_file = join(BASE_DIR, 'xasdb1', 'testdata', 'good', xdi_file)
+            test_file = join(settings.BASE_DIR, 'xasdb1', 'testdata', 'good', xdi_file)
             self.assertTrue(exists(test_file))
             with open(test_file) as fp:
                 response = self.c.post(reverse('xasdb1:upload'), dict(UPLOAD_FORMSET_DATA, upload_file=fp, upload_file_doi=DOI), follow=True)
@@ -443,6 +470,13 @@ class ElementTestsCreateAndLoginAsAdmin(TestCase):
             self.assertContains(response, 'File uploaded')
             self.assertContains(response, 'class="bk-root"', count=1)
             self.assertNotContains(response, 'Submission Status')
+            email = mail.outbox[-1]
+            self.assertEqual(email.subject, settings.EMAIL_SUBJECT_PREFIX + 'a new dataset has been uploaded')
+            self.assertEqual(email.body, 'A new dataset has been uploaded by {} ({}).\nPlease process this submission by visiting {}.'.format(self.user.get_full_name(), self.user.email, HOST + reverse('xasdb1:file', args=[xas_file.id])))
+            self.assertEqual(email.from_email, settings.SERVER_EMAIL)
+            self.assertEqual(len(email.to), 1)
+            self.assertTrue(email.to[0] in map(lambda x: x[1], settings.ADMINS))
+
         self.assertEqual(XASFile.objects.count(), len(self.xdi_files))
 
     def test_element_no_files(self):
@@ -458,23 +492,23 @@ class ElementTestsCreateAndLoginAsAdmin(TestCase):
         response = self.c.get(reverse('xasdb1:element', args=['Zn']))
         self.assertContains(response, '1 spectrum found for Zn')
 
-@override_settings(MEDIA_ROOT=TEMPDIR.name)
+@override_settings(**OVERRIDE_SETTINGS)
 class ElementTestsCreateAsAdminAndLoginAsUser(TestCase):
 
     def setUp(self):
         # let's assume that registering works fine via the view..
-        User.objects.create_superuser(username=USERNAME, password=PASSWORD, email='test@example.com')
+        self.user = User.objects.create_superuser(username=SU_USERNAME, password=SU_PASSWORD, email=SU_EMAIL)
         # populate database with all good xdi files
         self.c = Client()
-        response = self.c.post(reverse('xasdb1:login'), {'username': USERNAME, 'password': PASSWORD}, follow=True)
+        response = self.c.post(reverse('xasdb1:login'), {'username': SU_USERNAME, 'password': SU_PASSWORD}, follow=True)
         self.assertRedirects(response, reverse('xasdb1:index'))
-        self.assertContains(response, USERNAME  + ' logged in!')
-        test_dir = join(BASE_DIR, 'xasdb1', 'testdata', 'good')
+        self.assertContains(response, SU_USERNAME  + ' logged in!')
+        test_dir = join(settings.BASE_DIR, 'xasdb1', 'testdata', 'good')
         self.xdi_files = os.listdir(test_dir)
         self.assertTrue(len(self.xdi_files) > 0)
         
         for xdi_file in self.xdi_files:
-            test_file = join(BASE_DIR, 'xasdb1', 'testdata', 'good', xdi_file)
+            test_file = join(settings.BASE_DIR, 'xasdb1', 'testdata', 'good', xdi_file)
             self.assertTrue(exists(test_file))
             with open(test_file) as fp:
                 response = self.c.post(reverse('xasdb1:upload'), dict(UPLOAD_FORMSET_DATA, upload_file=fp, upload_file_doi=DOI), follow=True)
@@ -484,6 +518,13 @@ class ElementTestsCreateAsAdminAndLoginAsUser(TestCase):
             self.assertContains(response, 'File uploaded')
             self.assertContains(response, 'class="bk-root"', count=1)
             self.assertNotContains(response, 'Submission Status')
+            email = mail.outbox[-1]
+            self.assertEqual(email.subject, settings.EMAIL_SUBJECT_PREFIX + 'a new dataset has been uploaded')
+            self.assertEqual(email.body, 'A new dataset has been uploaded by {} ({}).\nPlease process this submission by visiting {}.'.format(self.user.get_full_name(), self.user.email, HOST + reverse('xasdb1:file', args=[xas_file.id])))
+            self.assertEqual(email.from_email, settings.SERVER_EMAIL)
+            self.assertEqual(len(email.to), 1)
+            self.assertTrue(email.to[0] in map(lambda x: x[1], settings.ADMINS))
+
         self.assertEqual(XASFile.objects.count(), len(self.xdi_files))
         # logout
         response = self.c.get(reverse('xasdb1:logout'))
@@ -519,23 +560,23 @@ class ElementTestsCreateAsAdminAndLoginAsUser(TestCase):
         response = self.c.get(reverse('xasdb1:element', args=['Zn']))
         self.assertContains(response, 'No spectra found for Zn')
 
-@override_settings(MEDIA_ROOT=TEMPDIR.name)
+@override_settings(**OVERRIDE_SETTINGS)
 class ElementTestsCreateAsAdminAndLogout(TestCase):
 
     def setUp(self):
         # let's assume that registering works fine via the view..
-        User.objects.create_superuser(username=USERNAME, password=PASSWORD, email='test@example.com')
+        self.user = User.objects.create_superuser(username=SU_USERNAME, password=SU_PASSWORD, email=SU_EMAIL)
         # populate database with all good xdi files
         self.c = Client()
-        response = self.c.post(reverse('xasdb1:login'), {'username': USERNAME, 'password': PASSWORD}, follow=True)
+        response = self.c.post(reverse('xasdb1:login'), {'username': SU_USERNAME, 'password': SU_PASSWORD}, follow=True)
         self.assertRedirects(response, reverse('xasdb1:index'))
-        self.assertContains(response, USERNAME  + ' logged in!')
-        test_dir = join(BASE_DIR, 'xasdb1', 'testdata', 'good')
+        self.assertContains(response, SU_USERNAME  + ' logged in!')
+        test_dir = join(settings.BASE_DIR, 'xasdb1', 'testdata', 'good')
         self.xdi_files = os.listdir(test_dir)
         self.assertTrue(len(self.xdi_files) > 0)
         
         for xdi_file in self.xdi_files:
-            test_file = join(BASE_DIR, 'xasdb1', 'testdata', 'good', xdi_file)
+            test_file = join(settings.BASE_DIR, 'xasdb1', 'testdata', 'good', xdi_file)
             self.assertTrue(exists(test_file))
             with open(test_file) as fp:
                 response = self.c.post(reverse('xasdb1:upload'), dict(UPLOAD_FORMSET_DATA, upload_file=fp, upload_file_doi=DOI), follow=True)
@@ -545,6 +586,13 @@ class ElementTestsCreateAsAdminAndLogout(TestCase):
             self.assertContains(response, 'File uploaded')
             self.assertContains(response, 'class="bk-root"', count=1)
             self.assertNotContains(response, 'Submission Status')
+            email = mail.outbox[-1]
+            self.assertEqual(email.subject, settings.EMAIL_SUBJECT_PREFIX + 'a new dataset has been uploaded')
+            self.assertEqual(email.body, 'A new dataset has been uploaded by {} ({}).\nPlease process this submission by visiting {}.'.format(self.user.get_full_name(), self.user.email, HOST + reverse('xasdb1:file', args=[xas_file.id])))
+            self.assertEqual(email.from_email, settings.SERVER_EMAIL)
+            self.assertEqual(len(email.to), 1)
+            self.assertTrue(email.to[0] in map(lambda x: x[1], settings.ADMINS))
+
         self.assertEqual(XASFile.objects.count(), len(self.xdi_files))
         # logout
         response = self.c.get(reverse('xasdb1:logout'))
@@ -575,17 +623,17 @@ class ElementTestsCreateAsAdminAndLogout(TestCase):
         response = self.c.get(reverse('xasdb1:element', args=['Zn']))
         self.assertContains(response, 'No spectra found for Zn')
 
-@override_settings(MEDIA_ROOT=TEMPDIR.name)
+@override_settings(**OVERRIDE_SETTINGS)
 class FileTestsCreateAsAdmin(TestCase):
 
     def setUp(self):
         # let's assume that registering works fine via the view..
-        User.objects.create_superuser(username=2*USERNAME, password=2*PASSWORD, email='test@example.com')
+        self.user = User.objects.create_superuser(username=SU_USERNAME, password=SU_PASSWORD, email=SU_EMAIL)
         self.c = Client()
-        response = self.c.post(reverse('xasdb1:login'), {'username': 2*USERNAME, 'password': 2*PASSWORD}, follow=True)
+        response = self.c.post(reverse('xasdb1:login'), {'username': SU_USERNAME, 'password': SU_PASSWORD}, follow=True)
         self.assertRedirects(response, reverse('xasdb1:index'))
-        self.assertContains(response, 2*USERNAME  + ' logged in!')
-        test_file = join(BASE_DIR, 'xasdb1', 'testdata', 'good', 'fe3c_rt.xdi')
+        self.assertContains(response, SU_USERNAME  + ' logged in!')
+        test_file = join(settings.BASE_DIR, 'xasdb1', 'testdata', 'good', 'fe3c_rt.xdi')
         self.assertTrue(exists(test_file))
         with open(test_file) as fp:
             response = self.c.post(reverse('xasdb1:upload'), dict(UPLOAD_FORMSET_DATA, upload_file=fp, upload_file_doi=DOI), follow=True)
@@ -629,9 +677,9 @@ class FileTestsCreateAsAdmin(TestCase):
         self.assertNotContains(response, 'Submission Status')
 
     def test_file_login_as_admin(self):
-        response = self.c.post(reverse('xasdb1:login'), {'username': 2*USERNAME, 'password': 2*PASSWORD}, follow=True)
+        response = self.c.post(reverse('xasdb1:login'), {'username': SU_USERNAME, 'password': SU_PASSWORD}, follow=True)
         self.assertRedirects(response, reverse('xasdb1:index'))
-        self.assertContains(response, 2*USERNAME  + ' logged in!')
+        self.assertContains(response, SU_USERNAME  + ' logged in!')
         file = XASFile.objects.all()[0]
         response = self.c.get(reverse('xasdb1:file', args=[file.id]), follow=True)
         self.assertContains(response, f'Spectrum: {file.sample_name}')
@@ -646,7 +694,7 @@ class FileTestsCreateAsAdmin(TestCase):
         self.assertContains(response, 'Review status')
         self.assertContains(response, 'selected>Approved')
 
-@override_settings(MEDIA_ROOT=TEMPDIR.name)
+@override_settings(**OVERRIDE_SETTINGS)
 class FileTestsCreateAsUser(TestCase):
 
     def setUp(self):
@@ -656,7 +704,7 @@ class FileTestsCreateAsUser(TestCase):
         response = self.c.post(reverse('xasdb1:login'), {'username': USERNAME, 'password': PASSWORD}, follow=True)
         self.assertRedirects(response, reverse('xasdb1:index'))
         self.assertContains(response, USERNAME  + ' logged in!')
-        test_file = join(BASE_DIR, 'xasdb1', 'testdata', 'good', 'fe3c_rt.xdi')
+        test_file = join(settings.BASE_DIR, 'xasdb1', 'testdata', 'good', 'fe3c_rt.xdi')
         self.assertTrue(exists(test_file))
         with open(test_file) as fp:
             response = self.c.post(reverse('xasdb1:upload'), dict(UPLOAD_FORMSET_DATA, upload_file=fp, upload_file_doi=DOI), follow=True)
@@ -703,10 +751,10 @@ class FileTestsCreateAsUser(TestCase):
         self.assertContains(response, 'Rejected')
 
     def test_file_login_as_admin(self):
-        User.objects.create_superuser(username=2*USERNAME, password=2*PASSWORD, email='test@example.com')
-        response = self.c.post(reverse('xasdb1:login'), {'username': 2*USERNAME, 'password': 2*PASSWORD}, follow=True)
+        User.objects.create_superuser(username=SU_USERNAME, password=SU_PASSWORD, email=SU_EMAIL)
+        response = self.c.post(reverse('xasdb1:login'), {'username': SU_USERNAME, 'password': SU_PASSWORD}, follow=True)
         self.assertRedirects(response, reverse('xasdb1:index'))
-        self.assertContains(response, 2*USERNAME  + ' logged in!')
+        self.assertContains(response, SU_USERNAME  + ' logged in!')
         file = XASFile.objects.all()[0]
         response = self.c.get(reverse('xasdb1:file', args=[file.id]), follow=True)
         self.assertContains(response, f'Spectrum: {file.sample_name}')
@@ -721,7 +769,7 @@ class FileTestsCreateAsUser(TestCase):
         self.assertContains(response, 'Review status')
         self.assertContains(response, 'selected>Approved')
 
-@override_settings(MEDIA_ROOT=TEMPDIR.name)
+@override_settings(**OVERRIDE_SETTINGS)
 class FileTestsCheckContents(TestCase):
 
     def setUp(self):
@@ -732,12 +780,12 @@ class FileTestsCheckContents(TestCase):
         response = self.c.post(reverse('xasdb1:login'), {'username': USERNAME, 'password': PASSWORD}, follow=True)
         self.assertRedirects(response, reverse('xasdb1:index'))
         self.assertContains(response, USERNAME  + ' logged in!')
-        test_dir = join(BASE_DIR, 'xasdb1', 'testdata', 'good')
+        test_dir = join(settings.BASE_DIR, 'xasdb1', 'testdata', 'good')
         self.xdi_files = os.listdir(test_dir)
         self.assertTrue(len(self.xdi_files) > 0)
         
         for xdi_file in self.xdi_files:
-            test_file = join(BASE_DIR, 'xasdb1', 'testdata', 'good', xdi_file)
+            test_file = join(settings.BASE_DIR, 'xasdb1', 'testdata', 'good', xdi_file)
             self.assertTrue(exists(test_file))
             with open(test_file) as fp:
                 response = self.c.post(reverse('xasdb1:upload'), dict(UPLOAD_FORMSET_DATA, upload_file=fp, upload_file_doi=DOI), follow=True)
@@ -757,7 +805,7 @@ class FileTestsCheckContents(TestCase):
             self.assertContains(response, f'{FIRST_NAME} {LAST_NAME}')
             # self.assertNotContains(response, 'unknown')
 
-@override_settings(MEDIA_ROOT=TEMPDIR.name)
+@override_settings(**OVERRIDE_SETTINGS)
 class FileTestsDownload(TestCase):
 
     def setUp(self):
@@ -767,8 +815,8 @@ class FileTestsDownload(TestCase):
         response = self.c.post(reverse('xasdb1:login'), {'username': USERNAME, 'password': PASSWORD}, follow=True)
         self.assertRedirects(response, reverse('xasdb1:index'))
         self.assertContains(response, USERNAME  + ' logged in!')
-        test_file = join(BASE_DIR, 'xasdb1', 'testdata', 'good', 'fe3c_rt.xdi')
-        aux_file1 = join(BASE_DIR, 'xasdb1', 'testdata', 'bad', 'bad_01.xdi')
+        test_file = join(settings.BASE_DIR, 'xasdb1', 'testdata', 'good', 'fe3c_rt.xdi')
+        aux_file1 = join(settings.BASE_DIR, 'xasdb1', 'testdata', 'bad', 'bad_01.xdi')
         self.assertTrue(exists(test_file))
         self.assertTrue(exists(aux_file1))
         aux_desc1 = ''.join(random.choices(string.ascii_uppercase + string.digits, k=10))
@@ -945,7 +993,7 @@ class FileTestsDownload(TestCase):
         self.assertRedirects(response, '/xasdb1/')
         self.assertContains(response, 'The requested file non-existent-file.xdi does not exist')
 
-@override_settings(MEDIA_ROOT=TEMPDIR.name)
+@override_settings(**OVERRIDE_SETTINGS)
 class FileTestsVerify(TestCase):
     def setUp(self):
         # let's assume that registering works fine via the view..
@@ -954,10 +1002,10 @@ class FileTestsVerify(TestCase):
         response = self.c.post(reverse('xasdb1:login'), {'username': USERNAME, 'password': PASSWORD}, follow=True)
         self.assertRedirects(response, reverse('xasdb1:index'))
         self.assertContains(response, USERNAME  + ' logged in!')
-        test_file = join(BASE_DIR, 'xasdb1', 'testdata', 'good', 'fe3c_rt.xdi')
-        aux_file1 = join(BASE_DIR, 'xasdb1', 'testdata', 'bad', 'bad_01.xdi')
-        aux_file2 = join(BASE_DIR, 'xasdb1', 'testdata', 'bad', 'bad_02.xdi')
-        aux_file3 = join(BASE_DIR, 'xasdb1', 'testdata', 'bad', 'bad_03.xdi')
+        test_file = join(settings.BASE_DIR, 'xasdb1', 'testdata', 'good', 'fe3c_rt.xdi')
+        aux_file1 = join(settings.BASE_DIR, 'xasdb1', 'testdata', 'bad', 'bad_01.xdi')
+        aux_file2 = join(settings.BASE_DIR, 'xasdb1', 'testdata', 'bad', 'bad_02.xdi')
+        aux_file3 = join(settings.BASE_DIR, 'xasdb1', 'testdata', 'bad', 'bad_03.xdi')
         self.assertTrue(exists(test_file))
         self.assertTrue(exists(aux_file1))
         self.assertTrue(exists(aux_file2))
@@ -1028,8 +1076,8 @@ class FileTestsVerify(TestCase):
         self.assertContains(response, 'The requested file is not accessible')
 
     def test_as_admin(self):
-        User.objects.create_superuser(username=2*USERNAME, password=2*PASSWORD, email='test@example.com')
-        login = self.c.login(username=2*USERNAME, password=2*PASSWORD)
+        User.objects.create_superuser(username=SU_USERNAME, password=SU_PASSWORD, email=SU_EMAIL)
+        login = self.c.login(username=SU_USERNAME, password=SU_PASSWORD)
         self.assertTrue(login)
 
         BASE_DICT = model_to_dict(self.xas_file) # convert instance do POST style dict
