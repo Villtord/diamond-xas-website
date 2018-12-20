@@ -6,7 +6,7 @@ from django.forms.models import model_to_dict
 from django.core import mail
 
 from django.conf import settings
-from .models import XASFile, XASUploadAuxData
+from .models import XASFile, XASUploadAuxData, XASDownloadFile
 from .views import HOST
 
 from os.path import join, exists, basename, getsize
@@ -64,6 +64,10 @@ class RegisterTests(TestCase):
         response = c.post(reverse('xasdb1:register'), {'username': USERNAME, 'password1': PASSWORD, 'password2': PASSWORD, 'first_name': FIRST_NAME, 'last_name': LAST_NAME, 'email': EMAIL}, follow=True)
         self.assertRedirects(response, reverse('xasdb1:index'))
         self.assertContains(response, 'Account created successfully: please activate using the email that was sent to you')
+        # try creating account with identical username
+        response = c.post(reverse('xasdb1:register'), {'username': USERNAME, 'password1': PASSWORD, 'password2': PASSWORD, 'first_name': FIRST_NAME, 'last_name': LAST_NAME, 'email': EMAIL}, follow=True)
+        #print(f'response: {response.content}')
+        self.assertContains(response, 'A user with that username already exists.')
 
 @override_settings(**OVERRIDE_SETTINGS)
 class LoginTests(TestCase):
@@ -1223,3 +1227,82 @@ class FileTestsVerify(TestCase):
         self.assertEqual(self.aux_file_description1, self.xas_file.xasuploadauxdata_set.get(pk=1).aux_description)
         self.assertEqual(self.aux_file_description3, self.xas_file.xasuploadauxdata_set.get(pk=3).aux_description)
 
+@override_settings(**OVERRIDE_SETTINGS)
+class GDPRTests(TestCase):
+    def setUp(self):
+        # let's assume that registering works fine via the view..
+        self.user1 = User.objects.create_user(username=USERNAME, password=PASSWORD, first_name=FIRST_NAME, last_name=LAST_NAME, email=EMAIL)
+        self.user2 = User.objects.create_user(username=2*USERNAME, password=2*PASSWORD, first_name=FIRST_NAME, last_name=LAST_NAME, email=EMAIL)
+        self.c = Client()
+
+        test_dir = join(settings.BASE_DIR, 'xasdb1', 'testdata', 'good')
+
+        # login as user1
+        self.assertTrue(self.c.login(username=USERNAME, password=PASSWORD))
+        self.xdi_files = os.listdir(test_dir)
+        self.assertTrue(len(self.xdi_files) > 0)
+       
+        for xdi_file in self.xdi_files[0::2]:
+            test_file = join(settings.BASE_DIR, 'xasdb1', 'testdata', 'good', xdi_file)
+            self.assertTrue(exists(test_file))
+            with open(test_file) as fp:
+                response = self.c.post(reverse('xasdb1:upload'), dict(UPLOAD_FORMSET_DATA, upload_file=fp, upload_file_doi=DOI), follow=True)
+            xas_file_all = XASFile.objects.all()
+            xas_file = xas_file_all[xas_file_all.count() - 1]
+            xas_file.review_status = XASFile.APPROVED
+            xas_file.save()
+            self.assertRedirects(response, reverse('xasdb1:file', args=[xas_file.id]))
+            self.assertContains(response, 'File uploaded')
+        self.assertContains(response, 'class="bk-root"', count=1)
+        self.user1_nfiles = XASFile.objects.count()
+
+        # login as user2
+        self.assertTrue(self.c.login(username=2*USERNAME, password=2*PASSWORD))
+        
+        for xdi_file in self.xdi_files[1::2]:
+            test_file = join(settings.BASE_DIR, 'xasdb1', 'testdata', 'good', xdi_file)
+            self.assertTrue(exists(test_file))
+            with open(test_file) as fp:
+                response = self.c.post(reverse('xasdb1:upload'), dict(UPLOAD_FORMSET_DATA, upload_file=fp, upload_file_doi=DOI), follow=True)
+            xas_file_all = XASFile.objects.all()
+            xas_file = xas_file_all[xas_file_all.count() - 1]
+            xas_file.review_status = XASFile.APPROVED
+            xas_file.save()
+            self.assertRedirects(response, reverse('xasdb1:file', args=[xas_file.id]))
+            self.assertContains(response, 'File uploaded')
+        self.assertContains(response, 'class="bk-root"', count=1)
+        self.assertEqual(XASFile.objects.count(), len(os.listdir(test_dir)))
+        self.user2_nfiles = XASFile.objects.count() - self.user1_nfiles
+
+        # generate some download events
+        # test download counter
+        self.downloads = {USERNAME:{}, 2*USERNAME:{}}
+        ndownloads_all = 0
+        for user in ((USERNAME, PASSWORD), (2*USERNAME, 2*PASSWORD)):
+            self.assertTrue(self.c.login(username=user[0], password=user[1]))
+            for file in XASFile.objects.all():
+                old = file.xasdownloadfile_set.count()
+                ndownloads = random.randint(1, 10)
+                ndownloads_all += ndownloads
+                for i in range(ndownloads):
+                    response = self.c.post(reverse('xasdb1:download', args=[file.upload_file.name]))
+                    self.assertEqual(response.status_code, 200)
+                    self.assertEqual(response.get('Content-Disposition'), 'attachment; filename="{}"'.format(basename(file.upload_file.name)))
+                self.assertEqual(file.xasdownloadfile_set.count(), ndownloads + old)
+                self.downloads[user[0]][file.name] = ndownloads
+        self.assertEqual(XASDownloadFile.objects.count(), ndownloads_all)
+        self.assertEqual(XASFile.objects.count(), self.user1_nfiles + self.user2_nfiles)
+        self.c.logout()
+
+    def test_delete_user(self):
+        u = User.objects.get(username=USERNAME)
+        u.delete()
+        remaining_downloads = 0
+        for user, files in self.downloads.items():
+            for xasfile in XASFile.objects.all():
+                remaining_downloads += files[xasfile.name]
+        self.assertEqual(XASDownloadFile.objects.count(), remaining_downloads)
+        self.assertEqual(XASFile.objects.count(), self.user2_nfiles)
+
+
+        
