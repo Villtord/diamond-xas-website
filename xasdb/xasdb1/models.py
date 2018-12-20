@@ -60,7 +60,7 @@ class XASFile(models.Model):
     upload_timestamp = models.DateTimeField('date published', auto_now_add=True)
     element = models.CharField(max_length=3, validators=[mendeljev_valid])
     edge = models.SmallIntegerField(choices=EDGE_CHOICES, default=xrl.K_SHELL)
-    uploader = models.ForeignKey(User, on_delete=models.SET_NULL, null=True)
+    uploader = models.ForeignKey(User, on_delete=models.CASCADE, null=True)
     review_status = models.SmallIntegerField(choices=REVIEW_STATUS_CHOICES, default=PENDING)
     sample_name = models.CharField(max_length=100, default='unknown')
     sample_prep = models.CharField(max_length=1000, default='unknown')
