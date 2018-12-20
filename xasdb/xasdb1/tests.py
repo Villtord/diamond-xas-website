@@ -47,6 +47,7 @@ UPLOAD_FORMSET_DATA_DOUBLE = {
     'form-MIN_NUM_FORMS': '0',
 }
 
+@override_settings(**OVERRIDE_SETTINGS)
 class RegisterTests(TestCase):
     def test_failed_register_from_view1(self):
         c = Client()
@@ -62,8 +63,9 @@ class RegisterTests(TestCase):
         c = Client()
         response = c.post(reverse('xasdb1:register'), {'username': USERNAME, 'password1': PASSWORD, 'password2': PASSWORD, 'first_name': FIRST_NAME, 'last_name': LAST_NAME, 'email': EMAIL}, follow=True)
         self.assertRedirects(response, reverse('xasdb1:index'))
-        self.assertContains(response, 'Account created successfully')
+        self.assertContains(response, 'Account created successfully: please activate using the email that was sent to you')
 
+@override_settings(**OVERRIDE_SETTINGS)
 class LoginTests(TestCase):
     def test_failed_login(self):
         login = self.client.login(username=USERNAME, password=PASSWORD)
@@ -87,10 +89,45 @@ class LoginTests(TestCase):
         c = Client()
         response = c.post(reverse('xasdb1:register'), {'username': USERNAME, 'password1': PASSWORD, 'password2': PASSWORD, 'first_name': FIRST_NAME, 'last_name': LAST_NAME, 'email': EMAIL}, follow=True)
         self.assertRedirects(response, reverse('xasdb1:index'))
-        self.assertContains(response, 'Account created successfully')
+        self.assertContains(response, 'Account created successfully: please activate using the email that was sent to you')
         response = c.post(reverse('xasdb1:login'), {'username': USERNAME, 'password': PASSWORD}, follow=True)
+        #print(f'response: {response.content}')
+        self.assertContains(response, 'This account is inactive.')
+        # check mailbox
+        self.assertEqual(len(mail.outbox), 2)
+        # first email should be sent to user, second to admins
+        email_user = mail.outbox[0]
+        self.assertEqual(len(email_user.to), 1)
+        self.assertEqual(email_user.to[0], EMAIL)
+        self.assertEqual(email_user.from_email, settings.SERVER_EMAIL)
+        self.assertEqual(email_user.subject, 'Activate your account')
+        self.assertTrue('{} {}'.format(FIRST_NAME, LAST_NAME) in email_user.body)
+
+        email_admin = mail.outbox[1]
+        self.assertEqual(email_admin.subject, settings.EMAIL_SUBJECT_PREFIX + 'a new user has registered')
+        self.assertEqual(email_admin.body, 'Name: {name}\nEmail: {email}\n\nAn activation email has been sent to the new user for confirmation'.format(name=FIRST_NAME + ' ' + LAST_NAME, email=EMAIL))
+        self.assertEqual(email_admin.from_email, settings.SERVER_EMAIL)
+        self.assertEqual(len(email_admin.to), 1)
+        self.assertTrue(email_admin.to[0] in map(lambda x: x[1], settings.ADMINS))
+       
+        splitted = email_user.body.split('/')
+        uid = splitted[-3]
+        token = splitted[-2]
+
+        # try activating with bad string
+        response = c.get(reverse('xasdb1:activate', args=[uid, "hiwefof-jojofwej"]), follow=True)
         self.assertRedirects(response, reverse('xasdb1:index'))
+        self.assertContains(response, 'Your activation request has been denied, probably because the link has expired. Please contact the admins to get a new one.')
+
+        # try activate with proper string
+        response = c.get(reverse('xasdb1:activate', args=[uid, token]), follow=True)
+        self.assertRedirects(response, reverse('xasdb1:login'))
+        self.assertContains(response, 'Your account has now been activated. Please login to start uploading and downloading datasets')
+       
+       # login now
+        response = c.post(reverse('xasdb1:login'), {'username': USERNAME, 'password': PASSWORD}, follow=True)
         self.assertContains(response, USERNAME  + ' logged in!')
+
         # logout
         response = c.get(reverse('xasdb1:logout'))
         self.assertRedirects(response, reverse('xasdb1:index'))

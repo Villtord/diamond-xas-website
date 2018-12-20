@@ -5,6 +5,8 @@ from django.urls import reverse
 from django.contrib.auth.decorators import login_required
 from django.contrib import messages
 from django.contrib.auth.forms import AuthenticationForm
+from django.contrib.auth.models import User
+from django.contrib.sites.shortcuts import get_current_site
 
 from django.contrib.auth import authenticate
 from django.contrib.auth import login as _login
@@ -14,13 +16,15 @@ from django.conf import settings
 
 from django.db.models import Q
 
-from django.utils.encoding import smart_str
+from django.utils.encoding import force_bytes, force_text, smart_str
+from django.utils.http import urlsafe_base64_encode, urlsafe_base64_decode
 
-from django.core.mail import mail_admins
+from django.core.mail import mail_admins, send_mail
 
 from .forms import XASFileSubmissionForm, XASDBUserCreationForm, XASUploadAuxDataFormSet, XASFileVerificationForm, XASUploadAuxDataVerificationFormSet
 from .models import XASFile, XASMode, XASArray, XASUploadAuxData
 from .utils import process_xdi_file
+from .tokens import account_activation_token
 
 import xraylib as xrl
 import tempfile
@@ -51,23 +55,48 @@ def register(request):
     if request.method == 'POST':
         f = XASDBUserCreationForm(request.POST)
         if f.is_valid():
-            f.save()
-            messages.success(request, 'Account created successfully')
+            user = f.save(commit=False)
+            user.is_active = False
+            user.save()
+            current_site = get_current_site(request)
+            uid = urlsafe_base64_encode(force_bytes(user.pk)).decode()
+            token = account_activation_token.make_token(user)
+            message = 'Hi {user},\nPlease click on the link to confirm your registration,\n\n{domain}{url}'.format(
+                user=user.get_full_name(),
+                domain=HOST,
+                url=reverse('xasdb1:activate', args=[uid, token])
+            )
+            send_mail('Activate your account', message, settings.SERVER_EMAIL, [user.email])
+            mail_admins('a new user has registered', 'Name: {name}\nEmail: {email}\n\nAn activation email has been sent to the new user for confirmation'.format(name=user.get_full_name(), email=user.email))
+            messages.success(request, 'Account created successfully: please activate using the email that was sent to you')
             return redirect('xasdb1:index')
     else:
         f = XASDBUserCreationForm()
 
     return render(request, 'xasdb1/register.html', {'form': f})
 
-class AuthenticationFormWithInactiveUsersOkay(AuthenticationForm):
-    def confirm_login_allowed(self, user):
-        pass
+def activate(request, uidb64, token):
+    try:
+        uid = force_text(urlsafe_base64_decode(uidb64))
+        user = User.objects.get(pk=uid)
+    except(TypeError, ValueError, OverflowError, User.DoesNotExist):
+        user = None
+    if user and account_activation_token.check_token(user, token):
+        user.is_active = True
+        user.save()
+        # send email to admins
+        messages.success(request, 'Your account has now been activated. Please login to start uploading and downloading datasets')
+        return redirect('xasdb1:login')
+    else:
+        messages.error(request, 'Your activation request has been denied, probably because the link has expired. Please contact the admins to get a new one.')
+        return redirect('xasdb1:index')
+
 
 def login(request):
     if request.user.is_authenticated:
         return redirect('xasdb1:index')
     if request.method == 'POST':
-        f = AuthenticationFormWithInactiveUsersOkay(request, data=request.POST)
+        f = AuthenticationForm(request, data=request.POST)
         if f.is_valid():
             username = f.cleaned_data.get('username')
             password = f.cleaned_data.get('password')
@@ -81,7 +110,7 @@ def login(request):
         #    return
         #    print('Invalid form -> probably means that the username or password is incorrect!')
     else:
-        f = AuthenticationFormWithInactiveUsersOkay()
+        f = AuthenticationForm()
 
     return render(request, 'xasdb1/login.html', {'form': f})
     
@@ -98,14 +127,17 @@ def element(request, element_id):
     if xrl.SymbolToAtomicNumber(element_id) == 0:
         messages.error(request, 'I am sure you already know that there is no element called ' + element_id + ' . Use the periodic table and stop fooling around.')
         return redirect('xasdb1:index')
+
     # make a distinction between staff and non-staff:
     # 1. staff should be able to see all spectra, regardless of review_status, and should be able to change that review_status
-    if request.user.is_staff:
+    elif request.user.is_staff:
         return render(request, 'xasdb1/element.html', {'element': element_id, 'files': XASFile.objects.filter(element=element_id).order_by('sample_name')})
+
     # 2. non-staff should be able to see all APPROVED spectra, as well as those uploaded by the user that were either rejected or pending review
     elif request.user.is_authenticated:
         data_filter = Q(uploader=request.user) | (~Q(uploader=request.user) & Q(review_status=XASFile.APPROVED))
         return render(request, 'xasdb1/element.html', {'element': element_id, 'files': XASFile.objects.filter(element=element_id).filter(data_filter).order_by('sample_name')})
+
     else:
         return render(request, 'xasdb1/element.html', {'element': element_id, 'files': XASFile.objects.filter(element=element_id).filter(review_status=XASFile.APPROVED).order_by('sample_name')})
 
