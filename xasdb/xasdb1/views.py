@@ -4,11 +4,11 @@ from django.urls import reverse
 
 from django.contrib.auth.decorators import login_required
 from django.contrib import messages
-from django.contrib.auth.forms import AuthenticationForm
+from django.contrib.auth.forms import AuthenticationForm, PasswordChangeForm
 from django.contrib.auth.models import User
 from django.contrib.sites.shortcuts import get_current_site
 
-from django.contrib.auth import authenticate
+from django.contrib.auth import authenticate, update_session_auth_hash
 from django.contrib.auth import login as _login
 from django.contrib.auth import logout as _logout
 
@@ -74,6 +74,23 @@ def register(request):
         f = XASDBUserCreationForm()
 
     return render(request, 'xasdb1/register.html', {'form': f})
+
+# taken from https://simpleisbetterthancomplex.com/tips/2016/08/04/django-tip-9-password-change-form.html
+def change_password(request):
+    if request.method == 'POST':
+        form = PasswordChangeForm(request.user, request.POST)
+        if form.is_valid():
+            user = form.save()
+            update_session_auth_hash(request, user)  # Important!
+            messages.success(request, 'Your password was successfully updated!')
+            return redirect('change_password')
+        else:
+            messages.error(request, 'Please correct the error below.')
+    else:
+        form = PasswordChangeForm(request.user)
+    return render(request, 'xasdb1/change_password.html', {
+        'form': form
+    })
 
 def activate(request, uidb64, token):
     try:

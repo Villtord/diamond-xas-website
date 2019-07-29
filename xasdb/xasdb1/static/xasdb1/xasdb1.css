@@ -45,3 +45,44 @@ th {
 	color: #E5E5E5;
 }
 
+.settingsbuttondiv {
+  border-right: 1px solid #FFFFFF;
+  color: #CCCCCC;
+  display: block;
+  float: left;
+  margin: 0;
+  padding: 10px 10px 6px;
+  text-decoration: none;
+  font-size: 1.10em;
+  padding-bottom: 10px;
+  padding-top: 16px;
+  border-right: 1px solid #FFFFFF;
+  color: #CCCCCC;
+  display: block;
+  float: left;
+  margin: 0;
+  padding: 10px 10px 6px;
+  text-decoration: none;
+  font-size: 1.10em;
+}
+
+.settingsbutton {
+  border-right: 1px solid #FFFFFF;
+  color: #CCCCCC;
+  display: block;
+  float: left;
+  margin: 0;
+  padding: 10px 10px 6px;
+  text-decoration: none;
+  font-size: 1.10em;
+  padding-bottom: 10px;
+  padding-top: 16px;
+  border-right: 1px solid #FFFFFF;
+  color: #CCCCCC;
+  display: block;
+  float: left;
+  margin: 0;
+  padding: 10px 10px 6px;
+  text-decoration: none;
+  font-size: 1.10em;
+}
