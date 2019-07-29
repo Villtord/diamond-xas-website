@@ -59,7 +59,7 @@ def register(request):
             user.is_active = False
             user.save()
             current_site = get_current_site(request)
-            uid = urlsafe_base64_encode(force_bytes(user.pk)).decode()
+            uid = urlsafe_base64_encode(force_bytes(user.pk))
             token = account_activation_token.make_token(user)
             message = 'Hi {user},\nPlease click on the link to confirm your registration,\n\n{domain}{url}'.format(
                 user=user.get_full_name(),

@@ -265,7 +265,7 @@ class UploadTests(TestCase):
         self.assertTrue(exists(test_file))
         with open(test_file) as fp:
             # this should work with the defaults in UPLOAD_FORMSET_DATA
-            response = c.post(reverse('xasdb1:upload'), dict(UPLOAD_FORMSET_DATA, **{'upload_file':fp, 'upload_file_doi':DOI, 'form-0-aux_description': "", 'form-0-aux_file': None}), follow=True)
+            response = c.post(reverse('xasdb1:upload'), dict(UPLOAD_FORMSET_DATA, **{'upload_file':fp, 'upload_file_doi':DOI, 'form-0-aux_description': "", 'form-0-aux_file': ''}), follow=True)
         self.assertEqual(XASFile.objects.count(), 1)
         xas_file = XASFile.objects.all()[0]
         self.assertRedirects(response, reverse('xasdb1:file', args=[xas_file.id]))
@@ -286,7 +286,7 @@ class UploadTests(TestCase):
         aux_desc1 = ''.join(random.choices(string.ascii_uppercase + string.digits, k=10))
         with open(test_file) as fp:
             # this should work with the defaults in UPLOAD_FORMSET_DATA
-            response = c.post(reverse('xasdb1:upload'), dict(UPLOAD_FORMSET_DATA, **{'upload_file':fp, 'upload_file_doi':DOI, 'form-0-aux_description': aux_desc1, 'form-0-aux_file': None}), follow=True)
+            response = c.post(reverse('xasdb1:upload'), dict(UPLOAD_FORMSET_DATA, **{'upload_file':fp, 'upload_file_doi':DOI, 'form-0-aux_description': aux_desc1, 'form-0-aux_file': ''}), follow=True)
         self.assertEqual(XASFile.objects.count(), 0)
         self.assertContains(response, 'Unique filename required')
 
