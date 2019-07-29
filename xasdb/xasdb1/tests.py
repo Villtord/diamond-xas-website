@@ -1305,4 +1305,4 @@ class GDPRTests(TestCase):
         self.assertEqual(XASFile.objects.count(), self.user2_nfiles)
 
 
-        
+ 
