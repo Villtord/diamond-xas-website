@@ -1304,5 +1304,38 @@ class GDPRTests(TestCase):
         self.assertEqual(XASDownloadFile.objects.count(), remaining_downloads)
         self.assertEqual(XASFile.objects.count(), self.user2_nfiles)
 
+@override_settings(**OVERRIDE_SETTINGS)
+class ChangePasswordTests(TestCase):
+    def setUp(self):
+        # let's assume that registering works fine via the view..
+        self.user = User.objects.create_user(username=USERNAME, password=PASSWORD, first_name=FIRST_NAME, last_name=LAST_NAME, email=EMAIL)
 
- 
+    def test_login_good_password(self):
+        c = Client()
+        response = c.post(reverse('xasdb1:login'), {'username': USERNAME, 'password': PASSWORD}, follow=True)
+        self.assertRedirects(response, reverse('xasdb1:index'))
+        self.assertContains(response, USERNAME  + ' logged in!')
+
+        response = c.post(reverse('xasdb1:change_password'), {'old_password': PASSWORD, 'new_password1': 2*PASSWORD, 'new_password2': 2*PASSWORD}, follow=True)
+        self.assertRedirects(response, reverse('xasdb1:index'))
+        self.assertContains(response, 'Your password was successfully updated!')
+
+    def test_login_wrong_password(self):
+        c = Client()
+        response = c.post(reverse('xasdb1:login'), {'username': USERNAME, 'password': PASSWORD}, follow=True)
+        self.assertRedirects(response, reverse('xasdb1:index'))
+        self.assertContains(response, USERNAME  + ' logged in!')
+
+        response = c.post(reverse('xasdb1:change_password'), {'old_password': 2*PASSWORD, 'new_password1': PASSWORD, 'new_password2': PASSWORD}, follow=True)
+        self.assertContains(response, 'Your old password was entered incorrectly. Please enter it again.')
+
+    def test_nologin(self):
+        c = Client()
+
+        response = c.post(reverse('xasdb1:change_password'), {'old_password': PASSWORD, 'new_password1': 2*PASSWORD, 'new_password2': 2*PASSWORD}, follow=True)
+        self.assertRedirects(response, '/xasdb1/login/?next=/xasdb1/change_password/')
+        self.assertContains(response, 'Login')
+
+
+        
+

@@ -46,24 +46,8 @@ th {
 }
 
 .settingsbuttondiv {
-  border-right: 1px solid #FFFFFF;
-  color: #CCCCCC;
-  display: block;
   float: left;
-  margin: 0;
-  padding: 10px 10px 6px;
-  text-decoration: none;
-  font-size: 1.10em;
-  padding-bottom: 10px;
-  padding-top: 16px;
-  border-right: 1px solid #FFFFFF;
-  color: #CCCCCC;
-  display: block;
-  float: left;
-  margin: 0;
-  padding: 10px 10px 6px;
-  text-decoration: none;
-  font-size: 1.10em;
+  overflow: hidden;
 }
 
 .settingsbutton {
@@ -75,14 +59,52 @@ th {
   padding: 10px 10px 6px;
   text-decoration: none;
   font-size: 1.10em;
-  padding-bottom: 10px;
-  padding-top: 16px;
+}
+
+.settingsbuttondiv div:hover {
+  background: none repeat scroll 0 0 #042044;
+  color: #FFFFFF;
+}
+
+.settings-content {
+  display: none;
+  position: absolute;
+  background-color: #f9f9f9;
+  min-width: 160px;
+  box-shadow: 0px 8px 16px 0px rgba(0,0,0,0.2);
+  z-index: 1;
+}
+
+.settings-content a {
+  float: none;
+  color: black;
+  padding: 12px 16px;
+  text-decoration: none;
+  display: block;
+  text-align: left;
+}
+
+.show {
+  display: block;
+}
+
+.settings-content li {
+  border-right: 0px;
+}
+
+#topmenu button {
   border-right: 1px solid #FFFFFF;
   color: #CCCCCC;
+  background-color: #072B5D;
   display: block;
   float: left;
   margin: 0;
   padding: 10px 10px 6px;
   text-decoration: none;
   font-size: 1.10em;
+}
+
+#topmenu button:hover {
+  background: none repeat scroll 0 0 #042044;
+  color: #FFFFFF;
 }
