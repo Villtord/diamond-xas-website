@@ -43,11 +43,14 @@
 			<li><a class="textmenu logout" href="{% url 'xasdb1:logout' %}">Logout</a></li>
 			<li><a class="textmenu upload" href="{% url 'xasdb1:upload' %}">Upload</a></li>
 			<!--<li><div class="textmenu welcome" style="color:#CCCCCC;padding 10px 10px 6px;font-size: 1.10em;padding-bottom:10px;padding-top:16px;float:left;padding-left:10px">Welcome back {{ user.get_short_name }}!</div></li>-->
-			<li><div class="settingsbuttondiv">
-					<button class="settingsbutton">Settings</button>
-					<!--<div id="settingsDropdown">
-						<a href="{% url 'xasdb1:change_password' %}">Change Password</a>	
-						</div>-->
+			<li><div class="settingsbuttondiv" style="float: left; overflow:hidden">
+					<!--<button class="settingsbutton">Settings</button>-->
+					<button class="textmenu dropbtn" onclick="myFunction()" >Settings <i class="fa fa-caret-down"></i></button>
+					<div class="settings-content" id="mySettings" style="position: absolute;margin-top: 2.8rem;">
+						<ul style="width: 110px; margin: 0; float:none">
+							<li><a href="{% url 'xasdb1:change_password' %}" style="width: 200px;border-right: 0px">Change Password</a></li>
+						</ul>
+						</div>
 			</div></li>
 			{% else %}
 			<li><a class="textmenu login" href="{% url 'xasdb1:login' %}">Login</a></li>

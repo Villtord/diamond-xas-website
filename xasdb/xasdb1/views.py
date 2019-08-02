@@ -76,6 +76,7 @@ def register(request):
     return render(request, 'xasdb1/register.html', {'form': f})
 
 # taken from https://simpleisbetterthancomplex.com/tips/2016/08/04/django-tip-9-password-change-form.html
+@login_required(login_url='xasdb1:login')
 def change_password(request):
     if request.method == 'POST':
         form = PasswordChangeForm(request.user, request.POST)
@@ -83,7 +84,7 @@ def change_password(request):
             user = form.save()
             update_session_auth_hash(request, user)  # Important!
             messages.success(request, 'Your password was successfully updated!')
-            return redirect('change_password')
+            return redirect('xasdb1:index')
         else:
             messages.error(request, 'Please correct the error below.')
     else:
