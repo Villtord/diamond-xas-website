@@ -50,22 +50,19 @@ UPLOAD_FORMSET_DATA_DOUBLE = {
 @override_settings(**OVERRIDE_SETTINGS)
 class RegisterTests(TestCase):
     def test_failed_register_from_view1(self):
-        c = Client()
-        response = c.post(reverse('xasdb1:register'), {'username':'', 'password1':'', 'password2':''})
+        response = self.client.post(reverse('xasdb1:register'), {'username':'', 'password1':'', 'password2':''})
         self.assertContains(response, 'Your password can&#39;t be too similar to your other personal information.')
 
     def test_failed_register_from_view2(self):
-        c = Client()
-        response = c.post(reverse('xasdb1:register'), {'username': USERNAME, 'password1': PASSWORD, 'password2':''})
+        response = self.client.post(reverse('xasdb1:register'), {'username': USERNAME, 'password1': PASSWORD, 'password2':''})
         self.assertContains(response, 'Your password can&#39;t be too similar to your other personal information.')
 
     def test_success_register_from_view(self):
-        c = Client()
-        response = c.post(reverse('xasdb1:register'), {'username': USERNAME, 'password1': PASSWORD, 'password2': PASSWORD, 'first_name': FIRST_NAME, 'last_name': LAST_NAME, 'email': EMAIL}, follow=True)
+        response = self.client.post(reverse('xasdb1:register'), {'username': USERNAME, 'password1': PASSWORD, 'password2': PASSWORD, 'first_name': FIRST_NAME, 'last_name': LAST_NAME, 'email': EMAIL}, follow=True)
         self.assertRedirects(response, reverse('xasdb1:index'))
         self.assertContains(response, 'Account created successfully: please activate using the email that was sent to you')
         # try creating account with identical username
-        response = c.post(reverse('xasdb1:register'), {'username': USERNAME, 'password1': PASSWORD, 'password2': PASSWORD, 'first_name': FIRST_NAME, 'last_name': LAST_NAME, 'email': EMAIL}, follow=True)
+        response = self.client.post(reverse('xasdb1:register'), {'username': USERNAME, 'password1': PASSWORD, 'password2': PASSWORD, 'first_name': FIRST_NAME, 'last_name': LAST_NAME, 'email': EMAIL}, follow=True)
         #print(f'response: {response.content}')
         self.assertContains(response, 'A user with that username already exists.')
 
@@ -81,20 +78,18 @@ class LoginTests(TestCase):
         self.assertTrue(login)
 
     def test_failed_login_from_view(self):
-        c = Client()
-        response = c.post(reverse('xasdb1:login'), {'username': USERNAME, 'password': PASSWORD}, follow=True)
+        response = self.client.post(reverse('xasdb1:login'), {'username': USERNAME, 'password': PASSWORD}, follow=True)
         self.assertContains(response, 'Please enter a correct username and password. Note that both fields may be case-sensitive.')
         # logout
-        response = c.get(reverse('xasdb1:logout'), follow=True)
+        response = self.client.get(reverse('xasdb1:logout'), follow=True)
         self.assertRedirects(response, reverse('xasdb1:index'))
         self.assertContains(response, 'Not logged in!')
 
     def test_success_login_from_view(self):
-        c = Client()
-        response = c.post(reverse('xasdb1:register'), {'username': USERNAME, 'password1': PASSWORD, 'password2': PASSWORD, 'first_name': FIRST_NAME, 'last_name': LAST_NAME, 'email': EMAIL}, follow=True)
+        response = self.client.post(reverse('xasdb1:register'), {'username': USERNAME, 'password1': PASSWORD, 'password2': PASSWORD, 'first_name': FIRST_NAME, 'last_name': LAST_NAME, 'email': EMAIL}, follow=True)
         self.assertRedirects(response, reverse('xasdb1:index'))
         self.assertContains(response, 'Account created successfully: please activate using the email that was sent to you')
-        response = c.post(reverse('xasdb1:login'), {'username': USERNAME, 'password': PASSWORD}, follow=True)
+        response = self.client.post(reverse('xasdb1:login'), {'username': USERNAME, 'password': PASSWORD}, follow=True)
         #print(f'response: {response.content}')
         self.assertContains(response, 'This account is inactive.')
         # check mailbox
@@ -119,21 +114,21 @@ class LoginTests(TestCase):
         token = splitted[-2]
 
         # try activating with bad string
-        response = c.get(reverse('xasdb1:activate', args=[uid, "hiwefof-jojofwej"]), follow=True)
+        response = self.client.get(reverse('xasdb1:activate', args=[uid, "hiwefof-jojofwej"]), follow=True)
         self.assertRedirects(response, reverse('xasdb1:index'))
         self.assertContains(response, 'Your activation request has been denied, probably because the link has expired. Please contact the admins to get a new one.')
 
         # try activate with proper string
-        response = c.get(reverse('xasdb1:activate', args=[uid, token]), follow=True)
+        response = self.client.get(reverse('xasdb1:activate', args=[uid, token]), follow=True)
         self.assertRedirects(response, reverse('xasdb1:login'))
         self.assertContains(response, 'Your account has now been activated. Please login to start uploading and downloading datasets')
        
        # login now
-        response = c.post(reverse('xasdb1:login'), {'username': USERNAME, 'password': PASSWORD}, follow=True)
+        response = self.client.post(reverse('xasdb1:login'), {'username': USERNAME, 'password': PASSWORD}, follow=True)
         self.assertContains(response, USERNAME  + ' logged in!')
 
         # logout
-        response = c.get(reverse('xasdb1:logout'))
+        response = self.client.get(reverse('xasdb1:logout'))
         self.assertRedirects(response, reverse('xasdb1:index'))
 
 @override_settings(**OVERRIDE_SETTINGS)
@@ -1347,30 +1342,64 @@ class ChangePasswordTests(TestCase):
         self.user = User.objects.create_user(username=USERNAME, password=PASSWORD, first_name=FIRST_NAME, last_name=LAST_NAME, email=EMAIL)
 
     def test_login_good_password(self):
-        c = Client()
-        response = c.post(reverse('xasdb1:login'), {'username': USERNAME, 'password': PASSWORD}, follow=True)
+        response = self.client.post(reverse('xasdb1:login'), {'username': USERNAME, 'password': PASSWORD}, follow=True)
         self.assertRedirects(response, reverse('xasdb1:index'))
         self.assertContains(response, USERNAME  + ' logged in!')
 
-        response = c.post(reverse('xasdb1:change_password'), {'old_password': PASSWORD, 'new_password1': 2*PASSWORD, 'new_password2': 2*PASSWORD}, follow=True)
+        response = self.client.post(reverse('xasdb1:change_password'), {'old_password': PASSWORD, 'new_password1': 2*PASSWORD, 'new_password2': 2*PASSWORD}, follow=True)
         self.assertRedirects(response, reverse('xasdb1:index'))
         self.assertContains(response, 'Your password was successfully updated!')
 
     def test_login_wrong_password(self):
-        c = Client()
-        response = c.post(reverse('xasdb1:login'), {'username': USERNAME, 'password': PASSWORD}, follow=True)
+        response = self.client.post(reverse('xasdb1:login'), {'username': USERNAME, 'password': PASSWORD}, follow=True)
         self.assertRedirects(response, reverse('xasdb1:index'))
         self.assertContains(response, USERNAME  + ' logged in!')
 
-        response = c.post(reverse('xasdb1:change_password'), {'old_password': 2*PASSWORD, 'new_password1': PASSWORD, 'new_password2': PASSWORD}, follow=True)
+        response = self.client.post(reverse('xasdb1:change_password'), {'old_password': 2*PASSWORD, 'new_password1': PASSWORD, 'new_password2': PASSWORD}, follow=True)
         self.assertContains(response, 'Your old password was entered incorrectly. Please enter it again.')
 
     def test_nologin(self):
-        c = Client()
-
-        response = c.post(reverse('xasdb1:change_password'), {'old_password': PASSWORD, 'new_password1': 2*PASSWORD, 'new_password2': 2*PASSWORD}, follow=True)
+        response = self.client.post(reverse('xasdb1:change_password'), {'old_password': PASSWORD, 'new_password1': 2*PASSWORD, 'new_password2': 2*PASSWORD}, follow=True)
         self.assertRedirects(response, '/xasdb1/login/?next=/xasdb1/change_password/')
         self.assertContains(response, 'Login')
+
+
+@override_settings(**OVERRIDE_SETTINGS)
+class ResetPasswordTests(TestCase):
+    def setUp(self):
+        # let's assume that registering works fine via the view..
+        self.user = User.objects.create_user(username=USERNAME, password=PASSWORD, first_name=FIRST_NAME, last_name=LAST_NAME, email=EMAIL)
+
+    def test_reset_password_good_email(self):
+        response = self.client.post(reverse('xasdb1:password_reset'), {'email': EMAIL, 'password': PASSWORD}, follow=True)
+        self.assertRedirects(response, reverse('xasdb1:password_reset_done'))
+
+        # check mailbox
+        self.assertEqual(len(mail.outbox), 1)
+        email = mail.outbox[0]
+        self.assertEqual(len(email.to), 1)
+        self.assertEqual(email.to[0], EMAIL)
+        self.assertEqual(email.from_email, settings.SERVER_EMAIL)
+        self.assertEqual(email.subject, 'Password reset')
+
+        # extract info
+        url_splitted = email.body.splitlines()[1].split('/')
+        uid = url_splitted[-3]
+        token = url_splitted[-2]
+
+        response = self.client.get(reverse('xasdb1:password_reset_confirm', args=[uid, token]), follow=True)
+        self.assertRedirects(response, reverse('xasdb1:password_reset_confirm', args=[uid, 'set-password']))
+
+        # change password
+        response = self.client.post(reverse('xasdb1:password_reset_confirm', args=[uid, 'set-password']), {'new_password1': 2*PASSWORD, 'new_password2': 2*PASSWORD}, follow=True) 
+
+        self.assertRedirects(response, reverse('xasdb1:password_reset_complete'))
+        self.assertContains(response, 'Your password has been set. You may go ahead and')
+        
+        # login with new password
+        response = self.client.post(reverse('xasdb1:login'), {'username': USERNAME, 'password': 2*PASSWORD}, follow=True)
+        self.assertRedirects(response, reverse('xasdb1:index'))
+        self.assertContains(response, USERNAME  + ' logged in!')
 
 
         
