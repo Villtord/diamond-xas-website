@@ -1,6 +1,6 @@
 from django.shortcuts import (render, redirect)
 from django.http import HttpResponse, FileResponse
-from django.urls import reverse
+from django.urls import reverse, reverse_lazy
 
 from django.contrib.auth.decorators import login_required
 from django.contrib import messages
@@ -11,6 +11,7 @@ from django.contrib.sites.shortcuts import get_current_site
 from django.contrib.auth import authenticate, update_session_auth_hash
 from django.contrib.auth import login as _login
 from django.contrib.auth import logout as _logout
+from django.contrib.auth import views as auth_views
 
 from django.conf import settings
 
@@ -47,6 +48,26 @@ XDI_TMP_DIR = tempfile.TemporaryDirectory()
 
 OUR_CITATION = \
         '''<div style="padding-left:30px">G. Cibin, D. Gianolio, S. A. Parry, T. Schoonjans, O. Moore, R. Draper, L. A. Miller, A. Thoma, C. L. Doswell, and A. Graham. An open access, integrated XAS data repository at Diamond Light Source. <i>XAFS 2018 conference proceedings</i> (2019)</div>''' # add clickable doi url when known!
+
+
+class PasswordResetView(auth_views.PasswordResetView):
+    template_name = 'xasdb1/password-reset.html'
+    success_url = reverse_lazy('xasdb1:password_reset_done')
+    subject_template_name = 'xasdb1/password-reset-subject.txt'
+    email_template_name = 'xasdb1/password-reset-email.html'
+    from_email = settings.SERVER_EMAIL
+
+class PasswordResetConfirmView(auth_views.PasswordResetConfirmView):
+    template_name = 'xasdb1/password-reset-confirm.html'
+    success_url = reverse_lazy('xasdb1:password_reset_complete')
+
+class PasswordResetDoneView(auth_views.PasswordResetDoneView):
+    template_name = 'xasdb1/password-reset-done.html'
+
+class PasswordResetCompleteView(auth_views.PasswordResetCompleteView):
+    template_name = 'xasdb1/password-reset-complete.html'
+
+
 
 def index(request):
     return render(request, 'xasdb1/index.html')
