@@ -1,6 +1,7 @@
 from django.forms import (Form, FileField, ModelForm, CharField, EmailField, TextInput, BaseModelFormSet, modelformset_factory, inlineformset_factory, BaseInlineFormSet)
-from django.forms.widgets import FileInput
+from django.forms.widgets import FileInput, PasswordInput
 from django.contrib.auth.forms import UserCreationForm
+from django.contrib.auth.hashers import check_password
 from django.core.exceptions import ValidationError
 from django.contrib.auth.models import User
 from .models import XASFile, XASUploadAuxData
@@ -104,3 +105,25 @@ class XASDBUserCreationForm(UserCreationForm):
         if commit:
             user.save()
         return user
+
+
+class XASDBUserDeletionForm(Form):
+    email = EmailField(max_length=100, validators=[])
+    password = CharField(widget=PasswordInput)
+
+    def __init__(self, user, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        self.user = user
+
+    def clean_email(self):
+        email = self.cleaned_data['email']
+
+        if email != self.user.email:
+            raise ValidationError('Incorrect email address!')
+
+    def clean_password(self):
+        password = self.cleaned_data['password']
+
+        if not check_password(password, self.user.password):
+            raise ValidationError('Incorrect password!')
+
