@@ -21,7 +21,7 @@ from django.utils.http import urlsafe_base64_encode, urlsafe_base64_decode
 
 from django.core.mail import mail_admins, send_mail
 
-from .forms import XASFileSubmissionForm, XASDBUserCreationForm, XASUploadAuxDataFormSet, XASFileVerificationForm, XASUploadAuxDataVerificationFormSet
+from .forms import XASFileSubmissionForm, XASDBUserCreationForm, XASUploadAuxDataFormSet, XASFileVerificationForm, XASUploadAuxDataVerificationFormSet, XASDBUserDeletionForm
 from .models import XASFile, XASMode, XASArray, XASUploadAuxData
 from .utils import process_xdi_file
 from .tokens import account_activation_token
@@ -92,6 +92,25 @@ def change_password(request):
     return render(request, 'xasdb1/change_password.html', {
         'form': form
     })
+
+@login_required(login_url='xasdb1:login')
+def delete_account(request):
+    if request.method == 'POST':
+        form = XASDBUserDeletionForm(request.user, request.POST)
+        if form.is_valid():
+            user = request.user
+            _logout(request)
+            user.delete()
+            messages.success(request, 'Your account has been removed')
+            return redirect('xasdb1:index')
+        else:
+            messages.error(request, 'Please correct the errors below.')
+    else:
+        form = XASDBUserDeletionForm(request.user)
+    return render(request, 'xasdb1/delete_account.html', {
+        'form': form
+    })
+
 
 def activate(request, uidb64, token):
     try:
