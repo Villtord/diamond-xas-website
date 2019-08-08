@@ -93,8 +93,8 @@ class XASMode(models.Model):
     mode = models.SmallIntegerField(choices=MODE_CHOICES, default=UNKNOWN)
 
 class XASUploadAuxData(models.Model):
-    aux_description = models.CharField('Description', max_length=256, default='', blank=True)
-    aux_file = models.FileField(upload_to='uploads/%Y/%m/%d/', blank=True, validators=[file_size_valid])
+    aux_description = models.CharField('Description', max_length=256, default='')
+    aux_file = models.FileField(upload_to='uploads/%Y/%m/%d/', validators=[file_size_valid])
     file = models.ForeignKey(XASFile, on_delete=models.CASCADE)
 
     @property

@@ -42,7 +42,7 @@ class XASUploadAuxDataBaseFormSet(BaseModelFormSet):
                 # 1. aux_description and aux_file are both empty -> ignore this one and move on the next
                 # 2. aux_description is empty but aux_file is not (and vice-versa) -> throw an error
                 # 3. both fields are not empty -> ok (but ensure they are unique in the formset!)
-                description = form.cleaned_data['aux_description']
+                description = form.cleaned_data.get('aux_description')
                 try:
                     file = form.cleaned_data['aux_file'].name # aux_file is an InMemoryUploadedFile instance, so we use the name to get the filename str (basename only)
                 except:
@@ -73,7 +73,7 @@ class XASUploadAuxDataBaseVerificationFormSet(BaseInlineFormSet):
         for index, form in enumerate(self.forms):
             #print(f'{index}')
             if form.cleaned_data:
-                description = form.cleaned_data['aux_description']
+                description = form.cleaned_data.get('aux_description')
                 #print(f'x{description}x')
                 #print(f'x{file}x')
                 if description:
