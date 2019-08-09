@@ -1040,8 +1040,8 @@ class FileTestsVerify(TransactionTestCase):
         self.assertRedirects(response, reverse('xasdb1:index'))
         self.assertContains(response, USERNAME  + ' logged in!')
         test_file = join(settings.BASE_DIR, 'xasdb1', 'testdata', 'good', 'fe3c_rt.xdi')
-        aux_file1 = join(settings.BASE_DIR, 'xasdb1', 'testdata', 'bad', 'bad_01.xdi')
-        aux_file2 = join(settings.BASE_DIR, 'xasdb1', 'testdata', 'bad', 'bad_02.xdi')
+        aux_file1 = join(settings.BASE_DIR, 'xasdb1', 'testdata', 'images', '1155.png')
+        aux_file2 = join(settings.BASE_DIR, 'xasdb1', 'testdata', 'images', '1412.png')
         aux_file3 = join(settings.BASE_DIR, 'xasdb1', 'testdata', 'bad', 'bad_03.xdi')
         self.assertTrue(exists(test_file))
         self.assertTrue(exists(aux_file1))
@@ -1050,7 +1050,7 @@ class FileTestsVerify(TransactionTestCase):
         aux_desc1 = ''.join(random.choices(string.ascii_uppercase + string.digits, k=10))
         aux_desc2 = ''.join(random.choices(string.ascii_uppercase + string.digits, k=10))
         aux_desc3 = ''.join(random.choices(string.ascii_uppercase + string.digits, k=10))
-        with open(test_file) as fp, open(aux_file1) as aux_fp1, open(aux_file2) as aux_fp2, open(aux_file3) as aux_fp3:
+        with open(test_file) as fp, open(aux_file1, 'rb') as aux_fp1, open(aux_file2, 'rb') as aux_fp2, open(aux_file3, 'rb') as aux_fp3:
             # this should work with the defaults in UPLOAD_FORMSET_DATA
             response = self.c.post( \
                     reverse('xasdb1:upload'), \
@@ -1077,9 +1077,16 @@ class FileTestsVerify(TransactionTestCase):
         self.aux_file_description2 = xas_file.xasuploadauxdata_set.all()[1].aux_description
         self.aux_file_description3 = xas_file.xasuploadauxdata_set.all()[2].aux_description
 
-        self.assertTrue(exists(join(settings.MEDIA_ROOT, xas_file.xasuploadauxdata_set.all()[0].aux_file.name)))
-        self.assertTrue(exists(join(settings.MEDIA_ROOT, xas_file.xasuploadauxdata_set.all()[1].aux_file.name)))
-        self.assertTrue(exists(join(settings.MEDIA_ROOT, xas_file.xasuploadauxdata_set.all()[2].aux_file.name)))
+        self.assertTrue(bool(xas_file.xasuploadauxdata_set.all()[0].aux_thumbnail_file))
+        self.assertTrue(bool(xas_file.xasuploadauxdata_set.all()[1].aux_thumbnail_file))
+        self.assertFalse(bool(xas_file.xasuploadauxdata_set.all()[2].aux_thumbnail_file))
+
+        self.assertTrue(exists(xas_file.xasuploadauxdata_set.all()[0].aux_file.path))
+        self.assertTrue(exists(xas_file.xasuploadauxdata_set.all()[1].aux_file.path))
+        self.assertTrue(exists(xas_file.xasuploadauxdata_set.all()[2].aux_file.path))
+
+        self.assertTrue(exists(xas_file.xasuploadauxdata_set.all()[0].aux_thumbnail_file.path))
+        self.assertTrue(exists(xas_file.xasuploadauxdata_set.all()[1].aux_thumbnail_file.path))
 
         # logout
         response = self.c.get(reverse('xasdb1:logout'))
@@ -1137,9 +1144,9 @@ class FileTestsVerify(TransactionTestCase):
             'xasuploadauxdata_set-2-aux_description' : self.xas_file.xasuploadauxdata_set.all()[2].aux_description \
         })
         
-        self.assertTrue(exists(join(settings.MEDIA_ROOT, self.xas_file.xasuploadauxdata_set.all()[0].aux_file.name)))
-        self.assertTrue(exists(join(settings.MEDIA_ROOT, self.xas_file.xasuploadauxdata_set.all()[1].aux_file.name)))
-        self.assertTrue(exists(join(settings.MEDIA_ROOT, self.xas_file.xasuploadauxdata_set.all()[2].aux_file.name)))
+        self.assertTrue(exists(self.xas_file.xasuploadauxdata_set.all()[0].aux_file.path))
+        self.assertTrue(exists(self.xas_file.xasuploadauxdata_set.all()[1].aux_file.path))
+        self.assertTrue(exists(self.xas_file.xasuploadauxdata_set.all()[2].aux_file.path))
 
         response = self.c.get(reverse('xasdb1:file', args=[self.xas_file.id]), follow=True)
         self.assertContains(response, f'Spectrum: {self.xas_file.sample_name}')
@@ -1156,15 +1163,18 @@ class FileTestsVerify(TransactionTestCase):
                 }\
             ),\
             follow=True)
-        self.assertTrue(exists(join(settings.MEDIA_ROOT, self.xas_file.xasuploadauxdata_set.all()[0].aux_file.name)))
-        self.assertTrue(exists(join(settings.MEDIA_ROOT, self.xas_file.xasuploadauxdata_set.all()[1].aux_file.name)))
-        self.assertTrue(exists(join(settings.MEDIA_ROOT, self.xas_file.xasuploadauxdata_set.all()[2].aux_file.name)))
+
+        self.assertTrue(exists(self.xas_file.xasuploadauxdata_set.all()[0].aux_file.path))
+        self.assertTrue(exists(self.xas_file.xasuploadauxdata_set.all()[1].aux_file.path))
+        self.assertTrue(exists(self.xas_file.xasuploadauxdata_set.all()[2].aux_file.path))
+
         self.assertContains(response, 'Review status')
         self.assertContains(response, 'selected>Approved')
         #print(f'response: {response.content}')
         self.xas_file = XASFile.objects.all()[0]
         self.aux_file_description2 = 'new-description'
         self.assertEqual(self.xas_file.review_status, XASFile.APPROVED)
+
         self.assertEqual(self.aux_file_description1, self.xas_file.xasuploadauxdata_set.all()[0].aux_description)
         self.assertEqual(self.aux_file_description2, self.xas_file.xasuploadauxdata_set.all()[1].aux_description)
         self.assertEqual(self.aux_file_description3, self.xas_file.xasuploadauxdata_set.all()[2].aux_description)
@@ -1183,9 +1193,11 @@ class FileTestsVerify(TransactionTestCase):
                 }\
             ),\
             follow=True)
-        self.assertTrue(exists(join(settings.MEDIA_ROOT, self.xas_file.xasuploadauxdata_set.all()[0].aux_file.name)))
-        self.assertTrue(exists(join(settings.MEDIA_ROOT, self.xas_file.xasuploadauxdata_set.all()[1].aux_file.name)))
-        self.assertTrue(exists(join(settings.MEDIA_ROOT, self.xas_file.xasuploadauxdata_set.all()[2].aux_file.name)))
+
+        self.assertTrue(exists(self.xas_file.xasuploadauxdata_set.all()[0].aux_file.path))
+        self.assertTrue(exists(self.xas_file.xasuploadauxdata_set.all()[1].aux_file.path))
+        self.assertTrue(exists(self.xas_file.xasuploadauxdata_set.all()[2].aux_file.path))
+
         self.assertContains(response, 'Review status')
         self.assertContains(response, 'selected>Rejected')
         self.assertContains(response, 'Could not update file: check error messages below')
@@ -1208,9 +1220,9 @@ class FileTestsVerify(TransactionTestCase):
                 }\
             ),\
             follow=True)
-        self.assertTrue(exists(join(settings.MEDIA_ROOT, self.xas_file.xasuploadauxdata_set.all()[0].aux_file.name)))
-        self.assertTrue(exists(join(settings.MEDIA_ROOT, self.xas_file.xasuploadauxdata_set.all()[1].aux_file.name)))
-        self.assertTrue(exists(join(settings.MEDIA_ROOT, self.xas_file.xasuploadauxdata_set.all()[2].aux_file.name)))
+        self.assertTrue(exists(self.xas_file.xasuploadauxdata_set.all()[0].aux_file.path))
+        self.assertTrue(exists(self.xas_file.xasuploadauxdata_set.all()[1].aux_file.path))
+        self.assertTrue(exists(self.xas_file.xasuploadauxdata_set.all()[2].aux_file.path))
         self.xas_file = XASFile.objects.all()[0]
         self.assertEqual(self.xas_file.review_status, XASFile.APPROVED)
         self.assertContains(response, 'Review status')
@@ -1224,7 +1236,8 @@ class FileTestsVerify(TransactionTestCase):
     
         # delete second file
         # save its name to confirm it will be deleted!
-        aux_file2 = join(settings.MEDIA_ROOT, self.xas_file.xasuploadauxdata_set.all()[1].aux_file.name)
+        aux_file2 = self.xas_file.xasuploadauxdata_set.all()[1].aux_file.path
+        aux_thumbnail_file2 = self.xas_file.xasuploadauxdata_set.all()[1].aux_thumbnail_file.path
 
         response = self.c.post( \
             reverse('xasdb1:file', args=[self.xas_file.id]),\
@@ -1244,10 +1257,10 @@ class FileTestsVerify(TransactionTestCase):
         self.assertEqual(self.xas_file.xasuploadauxdata_set.count(), 2)
         self.assertEqual(self.aux_file_description1, self.xas_file.xasuploadauxdata_set.all()[0].aux_description)
         self.assertEqual(self.aux_file_description3, self.xas_file.xasuploadauxdata_set.all()[1].aux_description)
-        self.assertTrue(exists(join(settings.MEDIA_ROOT, self.xas_file.xasuploadauxdata_set.all()[0].aux_file.name)))
-        self.assertTrue(exists(join(settings.MEDIA_ROOT, self.xas_file.xasuploadauxdata_set.all()[1].aux_file.name)))
-        print("aux_file2: {}".format(aux_file2))
+        self.assertTrue(exists(self.xas_file.xasuploadauxdata_set.all()[0].aux_file.path))
+        self.assertTrue(exists(self.xas_file.xasuploadauxdata_set.all()[1].aux_file.path))
         self.assertFalse(exists(aux_file2))
+        self.assertFalse(exists(aux_thumbnail_file2))
 
 @override_settings(**OVERRIDE_SETTINGS)
 class GDPRTests(TestCase):

@@ -7,6 +7,7 @@ from django.conf import settings
 import xdifile
 import tempfile
 import os.path
+from os.path import exists
 import xraylib as xrl
 from habanero import Crossref
 import imghdr
@@ -112,10 +113,13 @@ class XASUploadAuxData(models.Model):
 
     def save(self, *args, **kwargs):
         super().save(*args, **kwargs)
-        print("name: {} -> {}".format(self.aux_file.name, imghdr.what(os.path.join(settings.MEDIA_ROOT, self.aux_file.name))), file=sys.stderr)
-        if imghdr.what(os.path.join(settings.MEDIA_ROOT, self.aux_file.name)) is not None:
-            make_thumbnail(self.aux_file, self.aux_thumbnail_file, (150, 150), 'thumb')
-        super().save(*args, **kwargs)
+        if imghdr.what(self.aux_file.path) is not None:
+            make_thumbnail(self.aux_thumbnail_file, self.aux_file, (150, 150), 'thumb')
+            try:
+                super().save(update_fields=['aux_thumbnail_file'])
+            except Exception as e:
+                print("save exception: {}".format(e))
+                raise
 
 
 
@@ -132,7 +136,7 @@ class XASDownloadAuxData(models.Model):
     file = models.ForeignKey(XASUploadAuxData, on_delete=models.CASCADE)
     
 
-# based on taken from https://stackoverflow.com/a/56304444/1253230
+# based on https://stackoverflow.com/a/56304444/1253230
 def make_thumbnail(dst_image_field, src_image_field, size, name_suffix, sep='_'):
     """
     make thumbnail image and field from source image field
@@ -150,7 +154,7 @@ def make_thumbnail(dst_image_field, src_image_field, size, name_suffix, sep='_')
     dst_fname = dst_path + sep + name_suffix + dst_ext
 
     # check extension
-    filetype = imghdr.what(src_image_field.name).upper()
+    filetype = imghdr.what(src_image_field.path).upper()
 
     # Save thumbnail to in-memory file as StringIO
     dst_bytes = BytesIO()
