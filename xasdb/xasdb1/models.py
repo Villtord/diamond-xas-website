@@ -2,12 +2,20 @@ from django.db import models
 from django.contrib.auth.models import User
 from django.core.exceptions import ValidationError
 import django
+from django.conf import settings
 
 import xdifile
 import tempfile
 import os.path
 import xraylib as xrl
 from habanero import Crossref
+import imghdr
+
+from django.core.files.base import ContentFile
+from PIL import Image
+from io import BytesIO
+import sys
+
 
 XDI_TMP_DIR = tempfile.TemporaryDirectory()
 
@@ -95,11 +103,21 @@ class XASMode(models.Model):
 class XASUploadAuxData(models.Model):
     aux_description = models.CharField('Description', max_length=256, default='')
     aux_file = models.FileField(upload_to='uploads/%Y/%m/%d/', validators=[file_size_valid])
+    aux_thumbnail_file = models.ImageField(upload_to='uploads/%Y/%m/%d/', blank=True)
     file = models.ForeignKey(XASFile, on_delete=models.CASCADE)
 
     @property
     def name(self):
         return os.path.basename(self.aux_file.name)
+
+    def save(self, *args, **kwargs):
+        super().save(*args, **kwargs)
+        print("name: {} -> {}".format(self.aux_file.name, imghdr.what(os.path.join(settings.MEDIA_ROOT, self.aux_file.name))), file=sys.stderr)
+        if imghdr.what(os.path.join(settings.MEDIA_ROOT, self.aux_file.name)) is not None:
+            make_thumbnail(self.aux_file, self.aux_thumbnail_file, (150, 150), 'thumb')
+        super().save(*args, **kwargs)
+
+
 
 class XASDownloadFile(models.Model):
     #ip_address = models.GenericIPAddressField()
@@ -114,3 +132,31 @@ class XASDownloadAuxData(models.Model):
     file = models.ForeignKey(XASUploadAuxData, on_delete=models.CASCADE)
     
 
+# based on taken from https://stackoverflow.com/a/56304444/1253230
+def make_thumbnail(dst_image_field, src_image_field, size, name_suffix, sep='_'):
+    """
+    make thumbnail image and field from source image field
+
+    @example
+        thumbnail(self.thumbnail, self.image, (200, 200), 'thumb')
+    """
+    # create thumbnail image
+    image = Image.open(src_image_field)
+    image.thumbnail(size)
+
+    # build file name for dst
+    dst_path, dst_ext = os.path.splitext(src_image_field.name)
+    dst_ext = dst_ext.lower()
+    dst_fname = dst_path + sep + name_suffix + dst_ext
+
+    # check extension
+    filetype = imghdr.what(src_image_field.name).upper()
+
+    # Save thumbnail to in-memory file as StringIO
+    dst_bytes = BytesIO()
+    image.save(dst_bytes, filetype)
+    dst_bytes.seek(0)
+
+    # set save=False, otherwise it will run in an infinite loop
+    dst_image_field.save(dst_fname, ContentFile(dst_bytes.read()), save=False)
+    dst_bytes.close()

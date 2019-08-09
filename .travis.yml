@@ -8,7 +8,8 @@ install:
         - conda config --set always_yes yes
         - conda update -q conda
         - conda install django bokeh sqlparse
-        - conda install -c conda-forge xraylib habanero
+        - conda install -c conda-forge xraylib habanero Pillow
+        - conda install -c tom.schoonjans django-cleanup # soon to be available from conda-forge...
         # install xdi...
         - pushd $HOME
         - git clone -b XDI-autotools https://github.com/tschoonj/XAS-Data-Interchange
