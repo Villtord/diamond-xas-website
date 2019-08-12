@@ -106,6 +106,9 @@
 		{% endif %}
 
 		<a href="{% url 'xasdb1:download' upload_aux_form.instance.aux_file.url %}">{{ upload_aux_form.instance.name }}</a>
+		{% if upload_aux_form.instance.thumbnail %}
+		<a data-fancybox="gallery" data-caption="{{ upload_aux_form.instance.aux_description }}" href="{{ upload_aux_form.instance.image | safe}}"><img src="{{ upload_aux_form.instance.thumbnail | safe}}"></a>
+		{% endif %}
 		Delete? {{ upload_aux_form.DELETE }}
 	</div>
 	{% endfor %}
@@ -176,4 +179,10 @@
 		});
 	}
 </script>
+<script src="//code.jquery.com/jquery-3.3.1.min.js"></script>
+
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/gh/fancyapps/fancybox@3.5.7/dist/jquery.fancybox.min.css" />
+<script src="https://cdn.jsdelivr.net/gh/fancyapps/fancybox@3.5.7/dist/jquery.fancybox.min.js"></script>
+
+
 {% endblock %}

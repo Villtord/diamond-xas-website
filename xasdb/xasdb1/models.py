@@ -11,6 +11,7 @@ from os.path import exists
 import xraylib as xrl
 from habanero import Crossref
 import imghdr
+import base64
 
 from django.core.files.base import ContentFile
 from PIL import Image
@@ -110,6 +111,42 @@ class XASUploadAuxData(models.Model):
     @property
     def name(self):
         return os.path.basename(self.aux_file.name)
+
+    def thumbnail(self):
+        if hasattr(self, "_thumbnail"):
+            print("Reusing thumbnail!")
+            return self._thumbnail
+        try:
+            print("Generating thumbnail!")
+            image = Image.open(self.aux_thumbnail_file)
+            buffered = BytesIO()
+            image.save(buffered, format='png')
+            img_str = base64.b64encode(buffered.getvalue())
+            buffered.close()
+            self._thumbnail = "data:image/png;base64, {}".format(img_str.decode("utf-8"))
+            return self._thumbnail 
+        except Exception as e:
+            print("thumbnail exception caught: {}".format(e))
+            self._thumbnail = None
+            return
+
+    @property
+    def image(self):
+        if hasattr(self, "_image"):
+            print("Reusing image!")
+            return self._image
+        try:
+            image = Image.open(self.aux_file)
+            buffered = BytesIO()
+            image.save(buffered, format='png')
+            img_str = base64.b64encode(buffered.getvalue())
+            buffered.close()
+            self._image = "data:image/png;base64, {}".format(img_str.decode("utf-8"))
+            return self._image
+        except Exception as e:
+            print("image exception caught: {}".format(e))
+            self._image = None
+            return
 
     def save(self, *args, **kwargs):
         super().save(*args, **kwargs)
