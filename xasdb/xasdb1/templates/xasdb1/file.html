@@ -106,8 +106,8 @@
 		{% endif %}
 
 		<a href="{% url 'xasdb1:download' upload_aux_form.instance.aux_file.url %}">{{ upload_aux_form.instance.name }}</a>
-		{% if upload_aux_form.instance.thumbnail %}
-		<a data-fancybox="gallery" data-caption="{{ upload_aux_form.instance.aux_description }}" href="{{ upload_aux_form.instance.image | safe}}"><img src="{{ upload_aux_form.instance.thumbnail | safe}}"></a>
+		{% if upload_aux_form.instance.aux_thumbnail %}
+		<a data-fancybox="gallery" data-caption="{{ upload_aux_form.instance.aux_description }}" href="{{ upload_aux_form.instance.aux_image | safe}}"><img src="{{ upload_aux_form.instance.aux_thumbnail | safe}}"></a>
 		{% endif %}
 		Delete? {{ upload_aux_form.DELETE }}
 	</div>
@@ -126,11 +126,17 @@
 <tr>
 	<th>Auxiliary data</th>
 	<th>Filename</th>
+	<th>Thumbnail</th>
 </tr>
 {% for data in aux %}
 <tr>
 	<td>{{ data.aux_description }}</td>
 	<td> <a href="#" onClick="myConfirm('{% url 'xasdb1:download' data.aux_file.url %}', '{{ message | escapejs }}');">{{ data.name }}</a></td>
+	{% if data.aux_thumbnail %}
+	<td><a data-fancybox="gallery" data-caption="{{ data.aux_description }}" href="{{ data.aux_image | safe}}"><img src="{{ data.aux_thumbnail | safe}}"></a></td>
+	{% else %}
+	<td>Not available</td>
+	{% endif %}
 </tr>
 {% endfor %}
 </table>

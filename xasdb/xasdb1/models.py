@@ -13,7 +13,6 @@ from habanero import Crossref
 import imghdr
 import base64
 
-from django.core.files.base import ContentFile
 from PIL import Image
 from io import BytesIO
 import sys
@@ -105,55 +104,22 @@ class XASMode(models.Model):
 class XASUploadAuxData(models.Model):
     aux_description = models.CharField('Description', max_length=256, default='')
     aux_file = models.FileField(upload_to='uploads/%Y/%m/%d/', validators=[file_size_valid])
-    aux_thumbnail_file = models.ImageField(upload_to='uploads/%Y/%m/%d/', blank=True)
+    aux_thumbnail = models.TextField(blank=True)
+    aux_image = models.TextField(blank=True)
     file = models.ForeignKey(XASFile, on_delete=models.CASCADE)
 
     @property
     def name(self):
         return os.path.basename(self.aux_file.name)
 
-    def thumbnail(self):
-        if hasattr(self, "_thumbnail"):
-            print("Reusing thumbnail!")
-            return self._thumbnail
-        try:
-            print("Generating thumbnail!")
-            image = Image.open(self.aux_thumbnail_file)
-            buffered = BytesIO()
-            image.save(buffered, format='png')
-            img_str = base64.b64encode(buffered.getvalue())
-            buffered.close()
-            self._thumbnail = "data:image/png;base64, {}".format(img_str.decode("utf-8"))
-            return self._thumbnail 
-        except Exception as e:
-            print("thumbnail exception caught: {}".format(e))
-            self._thumbnail = None
-            return
-
-    @property
-    def image(self):
-        if hasattr(self, "_image"):
-            print("Reusing image!")
-            return self._image
-        try:
-            image = Image.open(self.aux_file)
-            buffered = BytesIO()
-            image.save(buffered, format='png')
-            img_str = base64.b64encode(buffered.getvalue())
-            buffered.close()
-            self._image = "data:image/png;base64, {}".format(img_str.decode("utf-8"))
-            return self._image
-        except Exception as e:
-            print("image exception caught: {}".format(e))
-            self._image = None
-            return
-
     def save(self, *args, **kwargs):
         super().save(*args, **kwargs)
         if imghdr.what(self.aux_file.path) is not None:
-            make_thumbnail(self.aux_thumbnail_file, self.aux_file, (150, 150), 'thumb')
+
             try:
-                super().save(update_fields=['aux_thumbnail_file'])
+                self.aux_thumbnail = make_image_base64(self.aux_file, (150, 150)) # thumbnail
+                self.aux_image = make_image_base64(self.aux_file) # regular size
+                super().save(update_fields=['aux_thumbnail', 'aux_image'])
             except Exception as e:
                 print("save exception: {}".format(e))
                 raise
@@ -174,30 +140,16 @@ class XASDownloadAuxData(models.Model):
     
 
 # based on https://stackoverflow.com/a/56304444/1253230
-def make_thumbnail(dst_image_field, src_image_field, size, name_suffix, sep='_'):
-    """
-    make thumbnail image and field from source image field
-
-    @example
-        thumbnail(self.thumbnail, self.image, (200, 200), 'thumb')
-    """
-    # create thumbnail image
+def make_image_base64(src_image_field, size=None):
     image = Image.open(src_image_field)
-    image.thumbnail(size)
-
-    # build file name for dst
-    dst_path, dst_ext = os.path.splitext(src_image_field.name)
-    dst_ext = dst_ext.lower()
-    dst_fname = dst_path + sep + name_suffix + dst_ext
-
-    # check extension
-    filetype = imghdr.what(src_image_field.path).upper()
+    if size is not None:
+        image.thumbnail(size)
 
     # Save thumbnail to in-memory file as StringIO
     dst_bytes = BytesIO()
-    image.save(dst_bytes, filetype)
-    dst_bytes.seek(0)
+    image.save(dst_bytes, 'png')
+    image_str = base64.b64encode(dst_bytes.getvalue())
+    dst_bytes.close()
 
     # set save=False, otherwise it will run in an infinite loop
-    dst_image_field.save(dst_fname, ContentFile(dst_bytes.read()), save=False)
-    dst_bytes.close()
+    return "data:image/png;base64, {}".format(image_str.decode("utf-8"))

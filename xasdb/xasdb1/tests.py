@@ -1035,8 +1035,7 @@ class FileTestsVerify(TransactionTestCase):
     def setUp(self):
         # let's assume that registering works fine via the view..
         self.user = User.objects.create_user(username=USERNAME, password=PASSWORD)
-        self.c = Client()
-        response = self.c.post(reverse('xasdb1:login'), {'username': USERNAME, 'password': PASSWORD}, follow=True)
+        response = self.client.post(reverse('xasdb1:login'), {'username': USERNAME, 'password': PASSWORD}, follow=True)
         self.assertRedirects(response, reverse('xasdb1:index'))
         self.assertContains(response, USERNAME  + ' logged in!')
         test_file = join(settings.BASE_DIR, 'xasdb1', 'testdata', 'good', 'fe3c_rt.xdi')
@@ -1052,7 +1051,7 @@ class FileTestsVerify(TransactionTestCase):
         aux_desc3 = ''.join(random.choices(string.ascii_uppercase + string.digits, k=10))
         with open(test_file) as fp, open(aux_file1, 'rb') as aux_fp1, open(aux_file2, 'rb') as aux_fp2, open(aux_file3, 'rb') as aux_fp3:
             # this should work with the defaults in UPLOAD_FORMSET_DATA
-            response = self.c.post( \
+            response = self.client.post( \
                     reverse('xasdb1:upload'), \
                     dict(UPLOAD_FORMSET_DATA, **{ \
                         'upload_file':fp, \
@@ -1077,57 +1076,87 @@ class FileTestsVerify(TransactionTestCase):
         self.aux_file_description2 = xas_file.xasuploadauxdata_set.all()[1].aux_description
         self.aux_file_description3 = xas_file.xasuploadauxdata_set.all()[2].aux_description
 
-        self.assertTrue(bool(xas_file.xasuploadauxdata_set.all()[0].aux_thumbnail_file))
-        self.assertTrue(bool(xas_file.xasuploadauxdata_set.all()[1].aux_thumbnail_file))
-        self.assertFalse(bool(xas_file.xasuploadauxdata_set.all()[2].aux_thumbnail_file))
-
         self.assertTrue(exists(xas_file.xasuploadauxdata_set.all()[0].aux_file.path))
         self.assertTrue(exists(xas_file.xasuploadauxdata_set.all()[1].aux_file.path))
         self.assertTrue(exists(xas_file.xasuploadauxdata_set.all()[2].aux_file.path))
 
-        self.assertTrue(exists(xas_file.xasuploadauxdata_set.all()[0].aux_thumbnail_file.path))
-        self.assertTrue(exists(xas_file.xasuploadauxdata_set.all()[1].aux_thumbnail_file.path))
+        self.assertTrue(xas_file.xasuploadauxdata_set.all()[0].aux_thumbnail)
+        self.assertTrue(xas_file.xasuploadauxdata_set.all()[1].aux_thumbnail)
+        self.assertFalse(xas_file.xasuploadauxdata_set.all()[2].aux_thumbnail)
+
+        self.assertTrue(xas_file.xasuploadauxdata_set.all()[0].aux_image)
+        self.assertTrue(xas_file.xasuploadauxdata_set.all()[1].aux_image)
+        self.assertFalse(xas_file.xasuploadauxdata_set.all()[2].aux_image)
 
         # logout
-        response = self.c.get(reverse('xasdb1:logout'))
+        response = self.client.get(reverse('xasdb1:logout'))
         self.assertRedirects(response, reverse('xasdb1:index'))
 
     def test_login_as_same_user(self):
         # users should never be able to access forms or do POST requests
-        login = self.c.login(username=USERNAME, password=PASSWORD)
+        login = self.client.login(username=USERNAME, password=PASSWORD)
         self.assertTrue(login)
-        response = self.c.get(reverse('xasdb1:file', args=[self.xas_file.id]), follow=True)
+        response = self.client.get(reverse('xasdb1:file', args=[self.xas_file.id]), follow=True)
         self.assertContains(response, f'Spectrum: {self.xas_file.sample_name}')
         self.assertContains(response, 'Submission Status')
         self.assertContains(response, 'Pending')
-        response = self.c.post(reverse('xasdb1:file', args=[self.xas_file.id]), {'review_status': XASFile.APPROVED}, follow=True)
+        self.assertContains(response, 'Not available', count=1)
+        self.assertContains(response, 'data-fancybox', count=2)
+        self.assertContains(response, 'data:image/png;base64, ', count=4)
+        response = self.client.post(reverse('xasdb1:file', args=[self.xas_file.id]), {'review_status': XASFile.APPROVED}, follow=True)
         self.assertRedirects(response, reverse('xasdb1:index'))
         self.assertContains(response, 'Only staff can make file POST requests!')
 
     def test_login_as_different_user(self):
         # users should never be able to access forms or do POST requests
         new_user = User.objects.create_user(username=2*USERNAME, password=2*PASSWORD)
-        login = self.c.login(username=2*USERNAME, password=2*PASSWORD)
+        login = self.client.login(username=2*USERNAME, password=2*PASSWORD)
         self.assertTrue(login)
-        response = self.c.get(reverse('xasdb1:file', args=[self.xas_file.id]), follow=True)
+        response = self.client.get(reverse('xasdb1:file', args=[self.xas_file.id]), follow=True)
         self.assertRedirects(response, reverse('xasdb1:index'))
         self.assertContains(response, 'The requested file is not accessible')
-        response = self.c.post(reverse('xasdb1:file', args=[self.xas_file.id]), {'review_status': XASFile.APPROVED}, follow=True)
+        response = self.client.post(reverse('xasdb1:file', args=[self.xas_file.id]), {'review_status': XASFile.APPROVED}, follow=True)
         self.assertRedirects(response, reverse('xasdb1:index'))
         self.assertContains(response, 'The requested file is not accessible')
+
+        # approve the dataset
+        self.xas_file.review_status = XASFile.APPROVED
+        self.xas_file.save()
+
+        response = self.client.get(reverse('xasdb1:file', args=[self.xas_file.id]), follow=True)
+        self.assertContains(response, f'Spectrum: {self.xas_file.sample_name}')
+        self.assertNotContains(response, 'Submission Status')
+        self.assertNotContains(response, 'Review status')
+        self.assertNotContains(response, 'Approved')
+        self.assertContains(response, 'Not available', count=1)
+        self.assertContains(response, 'data-fancybox', count=2)
+        self.assertContains(response, 'data:image/png;base64, ', count=4)
 
     def test_without_login(self):
         # users should never be able to access forms or do POST requests
-        response = self.c.get(reverse('xasdb1:file', args=[self.xas_file.id]), follow=True)
+        response = self.client.get(reverse('xasdb1:file', args=[self.xas_file.id]), follow=True)
         self.assertRedirects(response, reverse('xasdb1:index'))
         self.assertContains(response, 'The requested file is not accessible')
-        response = self.c.post(reverse('xasdb1:file', args=[self.xas_file.id]), {'review_status': XASFile.APPROVED}, follow=True)
+        response = self.client.post(reverse('xasdb1:file', args=[self.xas_file.id]), {'review_status': XASFile.APPROVED}, follow=True)
         self.assertRedirects(response, reverse('xasdb1:index'))
         self.assertContains(response, 'The requested file is not accessible')
 
+        # approve the dataset
+        self.xas_file.review_status = XASFile.APPROVED
+        self.xas_file.save()
+
+        response = self.client.get(reverse('xasdb1:file', args=[self.xas_file.id]), follow=True)
+        self.assertContains(response, f'Spectrum: {self.xas_file.sample_name}')
+        self.assertNotContains(response, 'Submission Status')
+        self.assertNotContains(response, 'Review status')
+        self.assertNotContains(response, 'Approved')
+        self.assertNotContains(response, 'Not available')
+        self.assertNotContains(response, 'data-fancybox')
+        self.assertNotContains(response, 'data:image/png;base64, ')
+
     def test_as_admin(self):
         User.objects.create_superuser(username=SU_USERNAME, password=SU_PASSWORD, email=SU_EMAIL)
-        login = self.c.login(username=SU_USERNAME, password=SU_PASSWORD)
+        login = self.client.login(username=SU_USERNAME, password=SU_PASSWORD)
         self.assertTrue(login)
 
         BASE_DICT = model_to_dict(self.xas_file) # convert instance do POST style dict
@@ -1148,13 +1177,16 @@ class FileTestsVerify(TransactionTestCase):
         self.assertTrue(exists(self.xas_file.xasuploadauxdata_set.all()[1].aux_file.path))
         self.assertTrue(exists(self.xas_file.xasuploadauxdata_set.all()[2].aux_file.path))
 
-        response = self.c.get(reverse('xasdb1:file', args=[self.xas_file.id]), follow=True)
+        response = self.client.get(reverse('xasdb1:file', args=[self.xas_file.id]), follow=True)
+        self.assertContains(response, 'data-fancybox', count=2)
+        self.assertContains(response, 'data:image/png;base64, ', count=4)
+
         self.assertContains(response, f'Spectrum: {self.xas_file.sample_name}')
         self.assertNotContains(response, 'Submission Status')
         self.assertContains(response, 'Review status')
         self.assertContains(response, 'selected>Pending')
         self.assertEqual(self.xas_file.review_status, XASFile.PENDING)
-        response = self.c.post( \
+        response = self.client.post( \
             reverse('xasdb1:file', args=[self.xas_file.id]),\
             dict(BASE_DICT,
                 **{\
@@ -1182,7 +1214,7 @@ class FileTestsVerify(TransactionTestCase):
         self.assertNotContains(response, 'Could not update file: check error messages below')
 
         # try setting descriptions to identical strings
-        response = self.c.post( \
+        response = self.client.post( \
             reverse('xasdb1:file', args=[self.xas_file.id]),\
             dict(BASE_DICT,
                 **{\
@@ -1209,7 +1241,7 @@ class FileTestsVerify(TransactionTestCase):
         self.assertEqual(self.aux_file_description3, self.xas_file.xasuploadauxdata_set.all()[2].aux_description)
         
         # try setting an empty description
-        response = self.c.post( \
+        response = self.client.post( \
             reverse('xasdb1:file', args=[self.xas_file.id]),\
             dict(BASE_DICT,
                 **{\
@@ -1237,9 +1269,8 @@ class FileTestsVerify(TransactionTestCase):
         # delete second file
         # save its name to confirm it will be deleted!
         aux_file2 = self.xas_file.xasuploadauxdata_set.all()[1].aux_file.path
-        aux_thumbnail_file2 = self.xas_file.xasuploadauxdata_set.all()[1].aux_thumbnail_file.path
 
-        response = self.c.post( \
+        response = self.client.post( \
             reverse('xasdb1:file', args=[self.xas_file.id]),\
             dict(BASE_DICT,
                 **{\
@@ -1253,6 +1284,8 @@ class FileTestsVerify(TransactionTestCase):
         self.assertContains(response, 'File information updated')
         self.assertContains(response, 'Review status')
         self.assertContains(response, 'selected>Pending')
+        self.assertContains(response, 'data-fancybox', count=1)
+        self.assertContains(response, 'data:image/png;base64, ', count=2)
         self.assertNotContains(response, 'Could not update file: check error messages below')
         self.assertEqual(self.xas_file.xasuploadauxdata_set.count(), 2)
         self.assertEqual(self.aux_file_description1, self.xas_file.xasuploadauxdata_set.all()[0].aux_description)
@@ -1260,7 +1293,6 @@ class FileTestsVerify(TransactionTestCase):
         self.assertTrue(exists(self.xas_file.xasuploadauxdata_set.all()[0].aux_file.path))
         self.assertTrue(exists(self.xas_file.xasuploadauxdata_set.all()[1].aux_file.path))
         self.assertFalse(exists(aux_file2))
-        self.assertFalse(exists(aux_thumbnail_file2))
 
 @override_settings(**OVERRIDE_SETTINGS)
 class GDPRTests(TestCase):
