@@ -500,12 +500,12 @@ class ElementTestsCreateAndLoginAsAdmin(TestCase):
             self.assertTrue(exists(test_file))
             with open(test_file) as fp:
                 response = self.c.post(reverse('xasdb1:upload'), dict(UPLOAD_FORMSET_DATA, upload_file=fp, upload_file_doi=DOI), follow=True)
-            xas_file_all = XASFile.objects.all()
-            xas_file = xas_file_all[xas_file_all.count() - 1]
-            self.assertRedirects(response, reverse('xasdb1:file', args=[xas_file.id]))
             self.assertContains(response, 'File uploaded')
             self.assertContains(response, 'class="bk-root"', count=1)
             self.assertNotContains(response, 'Submission Status')
+            xas_file_all = XASFile.objects.all()
+            xas_file = xas_file_all[xas_file_all.count() - 1]
+            self.assertRedirects(response, reverse('xasdb1:file', args=[xas_file.id]))
             email = mail.outbox[-1]
             self.assertEqual(email.subject, settings.EMAIL_SUBJECT_PREFIX + 'a new dataset has been uploaded')
             self.assertEqual(email.body, 'A new dataset has been uploaded by {} ({}).\nPlease process this submission by visiting {}.'.format(self.user.get_full_name(), self.user.email, HOST + reverse('xasdb1:file', args=[xas_file.id])))
@@ -972,7 +972,7 @@ class FileTestsDownload(TransactionTestCase):
         self.assertContains(response, 'The requested file is not accessible')
 
         # now approve the file to make it accessible for this user
-        obj = XASFile.objects.get(pk=1)
+        obj = XASFile.objects.all()[0]
         obj.review_status = XASFile.APPROVED
         obj.save()
         response = self.c.post(reverse('xasdb1:download', args=[self.upload_file_name]))
@@ -984,9 +984,9 @@ class FileTestsDownload(TransactionTestCase):
         self.assertEqual(hash_md5.hexdigest(), self.xdi_checksum)
 
         # test download counter
-        file = XASFile.objects.get(pk=1)
+        file = XASFile.objects.all()[0]
         self.assertEqual(file.xasdownloadfile_set.count(), 1)
-        downloadfile = file.xasdownloadfile_set.get(pk=1)
+        downloadfile = file.xasdownloadfile_set.all()[0]
         self.assertEqual(downloadfile.downloader, new_user)
         ndownloads = random.randint(1, 10)
         for i in range(ndownloads):
@@ -1008,11 +1008,11 @@ class FileTestsDownload(TransactionTestCase):
         self.assertEqual(hash_md5.hexdigest(), self.aux_checksum)
 
         # test download counter
-        file = XASFile.objects.get(pk=1)
+        file = XASFile.objects.all()[0]
         self.assertEqual(file.xasuploadauxdata_set.count(), 1)
-        aux_file = file.xasuploadauxdata_set.get(pk=1)
+        aux_file = file.xasuploadauxdata_set.all()[0]
         self.assertEqual(aux_file.xasdownloadauxdata_set.count(), 1)
-        aux_download_data = aux_file.xasdownloadauxdata_set.get(pk=1)
+        aux_download_data = aux_file.xasdownloadauxdata_set.all()[0]
         self.assertEqual(aux_download_data.downloader, new_user)
         ndownloads = random.randint(1, 10)
         for i in range(ndownloads):
