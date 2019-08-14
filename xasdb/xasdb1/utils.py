@@ -6,6 +6,7 @@ from datetime import datetime, timezone
 from .models import XASFile, XASMode
 import os.path
 
+
 OPTIONAL_KWARGS = ( \
         ('sample', 'name'), \
         ('sample', 'prep'), \
@@ -120,3 +121,4 @@ def isotime2datetime(isotime):
     susec = int(1e6*float('.%s' % sfrac))
 
     return datetime(syear, smon, sday, shour, smin, ssec, susec, timezone.utc)
+

@@ -2,12 +2,21 @@ from django.db import models
 from django.contrib.auth.models import User
 from django.core.exceptions import ValidationError
 import django
+from django.conf import settings
 
 import xdifile
 import tempfile
 import os.path
+from os.path import exists
 import xraylib as xrl
 from habanero import Crossref
+import imghdr
+import base64
+
+from PIL import Image
+from io import BytesIO
+import sys
+
 
 XDI_TMP_DIR = tempfile.TemporaryDirectory()
 
@@ -93,13 +102,29 @@ class XASMode(models.Model):
     mode = models.SmallIntegerField(choices=MODE_CHOICES, default=UNKNOWN)
 
 class XASUploadAuxData(models.Model):
-    aux_description = models.CharField('Description', max_length=256, default='', blank=True)
-    aux_file = models.FileField(upload_to='uploads/%Y/%m/%d/', blank=True, validators=[file_size_valid])
+    aux_description = models.CharField('Description', max_length=256, default='')
+    aux_file = models.FileField(upload_to='uploads/%Y/%m/%d/', validators=[file_size_valid])
+    aux_thumbnail = models.TextField(blank=True)
+    aux_image = models.TextField(blank=True)
     file = models.ForeignKey(XASFile, on_delete=models.CASCADE)
 
     @property
     def name(self):
         return os.path.basename(self.aux_file.name)
+
+    def save(self, *args, **kwargs):
+        super().save(*args, **kwargs)
+        if imghdr.what(self.aux_file.path) is not None:
+
+            try:
+                self.aux_thumbnail = make_image_base64(self.aux_file, (150, 150)) # thumbnail
+                self.aux_image = make_image_base64(self.aux_file) # regular size
+                super().save(update_fields=['aux_thumbnail', 'aux_image'])
+            except Exception as e:
+                print("save exception: {}".format(e))
+                raise
+
+
 
 class XASDownloadFile(models.Model):
     #ip_address = models.GenericIPAddressField()
@@ -114,3 +139,17 @@ class XASDownloadAuxData(models.Model):
     file = models.ForeignKey(XASUploadAuxData, on_delete=models.CASCADE)
     
 
+# based on https://stackoverflow.com/a/56304444/1253230
+def make_image_base64(src_image_field, size=None):
+    image = Image.open(src_image_field)
+    if size is not None:
+        image.thumbnail(size)
+
+    # Save thumbnail to in-memory file as StringIO
+    dst_bytes = BytesIO()
+    image.save(dst_bytes, 'png')
+    image_str = base64.b64encode(dst_bytes.getvalue())
+    dst_bytes.close()
+
+    # set save=False, otherwise it will run in an infinite loop
+    return "data:image/png;base64, {}".format(image_str.decode("utf-8"))

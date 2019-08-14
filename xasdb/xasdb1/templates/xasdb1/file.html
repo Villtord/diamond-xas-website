@@ -92,11 +92,17 @@
 {% if user.is_staff or user.is_superuser %}
 <br/>
 {{ formset.management_form }}
+<table class="file-table-aux">
+<tr>
+	<th>Auxiliary data</th>
+	<th>Filename</th>
+	<th>Preview</th>
+	<th>Delete?</th>
+</tr>
 {% for upload_aux_form in formset %}
-	{{ upload_aux_form.id }}
-	<div class="upload_aux_formset">
-		{{ upload_aux_form.aux_description.label }}
-		{{ upload_aux_form.aux_description }}
+	
+	<tr>
+		<td>{{ upload_aux_form.id }}{{ upload_aux_form.aux_description }}
 		{% if upload_aux_form.aux_description.errors %}
 			<div class="upload_aux_formset_error">
 			{% for error in upload_aux_form.aux_description.errors %}
@@ -104,11 +110,18 @@
 			{% endfor %}
 			</div>
 		{% endif %}
+		</td>
 
-		<a href="{% url 'xasdb1:download' upload_aux_form.instance.aux_file.url %}">{{ upload_aux_form.instance.name }}</a>
-		Delete? {{ upload_aux_form.DELETE }}
-	</div>
+		<td><a href="{% url 'xasdb1:download' upload_aux_form.instance.aux_file.url %}">{{ upload_aux_form.instance.name }}</a></td>
+		{% if upload_aux_form.instance.aux_thumbnail %}
+		<td><a data-fancybox="gallery" data-caption="{{ upload_aux_form.instance.aux_description }}" href="{{ upload_aux_form.instance.aux_image | safe}}"><img src="{{ upload_aux_form.instance.aux_thumbnail | safe}}"></a></td>
+		{% else %}
+		<td>Not available</td>
+		{% endif %}
+		<td>{{ upload_aux_form.DELETE }}</td>
+	</tr>
 	{% endfor %}
+	</table>
 	{% if formset.non_form_errors %}
 		<div class="upload_aux_formset_error">
 		{% for error in formset.non_form_errors %}
@@ -123,11 +136,17 @@
 <tr>
 	<th>Auxiliary data</th>
 	<th>Filename</th>
+	<th>Preview</th>
 </tr>
 {% for data in aux %}
 <tr>
 	<td>{{ data.aux_description }}</td>
 	<td> <a href="#" onClick="myConfirm('{% url 'xasdb1:download' data.aux_file.url %}', '{{ message | escapejs }}');">{{ data.name }}</a></td>
+	{% if data.aux_thumbnail %}
+	<td><a data-fancybox="gallery" data-caption="{{ data.aux_description }}" href="{{ data.aux_image | safe}}"><img src="{{ data.aux_thumbnail | safe}}"></a></td>
+	{% else %}
+	<td>Not available</td>
+	{% endif %}
 </tr>
 {% endfor %}
 </table>
@@ -176,4 +195,10 @@
 		});
 	}
 </script>
+<script src="//code.jquery.com/jquery-3.3.1.min.js"></script>
+
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/gh/fancyapps/fancybox@3.5.7/dist/jquery.fancybox.min.css" />
+<script src="https://cdn.jsdelivr.net/gh/fancyapps/fancybox@3.5.7/dist/jquery.fancybox.min.js"></script>
+
+
 {% endblock %}
