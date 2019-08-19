@@ -1,4 +1,13 @@
-language: python
+language: generic
+dist: bionic
+
+matrix:
+        include:
+                - env: DJANGO_SETTINGS_MODULE=xasdb.settings_sqlite_dev
+                - env: DJANGO_SETTINGS_MODULE=xasdb.settings_mariadb_dev
+                  addons:
+                          mariadb: '10.4'
+                  sudo: true
 
 install:
         - wget https://repo.continuum.io/miniconda/Miniconda3-latest-Linux-x86_64.sh -O miniconda.sh
@@ -21,8 +30,14 @@ install:
         - popd
 
 script:
-        - cd xasdb
-        - python manage.py test xasdb1 -v 2
+        - |
+          if test -n "$TRAVIS_MARIADB_VERSION" ; then
+                sudo mysql -u root -e "CREATE USER 'xas_db_usr'@'localhost' IDENTIFIED BY 'BS4_password';"
+                sudo mysql -u root -e "GRANT ALL ON test_xasdb.* TO 'xas_db_usr'@'localhost'"
+                export XASDB_MARIADB_PASSWORD=BS4_password
+                conda install -c conda-forge -c defaults mysqlclient
+          fi
+        - cd xasdb ; python manage.py test -v 2
 
 
 branches:

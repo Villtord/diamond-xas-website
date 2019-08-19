@@ -8,3 +8,7 @@ db.sqlite3
 uploads/
 media/
 XAS-Data-Interchange
+ansible-playbook.yml
+xasdb/config/
+env/
+xraylib/
