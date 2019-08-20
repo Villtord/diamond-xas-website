@@ -2,15 +2,15 @@ from xasdb.settings import *
 import os
 from django.core.management.utils import get_random_secret_key
 
+STATICFILES_STORAGE = 'xasdb.utils.XASDBStaticFilesStorage'
+
 DEBUG = False
 
 ALLOWED_HOSTS = ['xasdb.diamond.ac.uk']
 
+MEDIA_ROOT = '/dls/science/users/awf63395/xasdb/media/'
 
-# taken from calipsoplus
-BASE_DIR = os.path.dirname(os.path.abspath(__file__))
-
-SECRET_DIR = os.path.join(BASE_DIR, '..', 'config', 'secrets')
+SECRET_DIR = os.path.join(BASE_DIR, 'config', 'secrets')
 SECRET_FILE = os.path.join(SECRET_DIR, 'secret_key.cnf')
 
 try:

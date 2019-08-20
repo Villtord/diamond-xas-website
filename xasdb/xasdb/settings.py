@@ -17,7 +17,7 @@ import os
 
 # SECURITY WARNING: keep the secret key used in production secret!
 
-
+BASE_DIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 
 # Application definition
 
@@ -118,5 +118,6 @@ ADMINS = [('Tom Schoonjans', 'Tom.Schoonjans@diamond.ac.uk')]
 EMAIL_BACKEND = 'django.core.mail.backends.smtp.EmailBackend'
 EMAIL_SUBJECT_PREFIX = '[XASDB] '
 SERVER_EMAIL = "donotreply@xasdb.diamond.ac.uk"
+DEFAULT_FROM_EMAIL = SERVER_EMAIL
 
 
