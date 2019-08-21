@@ -42,7 +42,8 @@ import base64
 from habanero import Crossref
 import traceback
 
-HOST = 'https://xasdb.diamond.ac.uk'
+#HOST = 'https://xasdb.diamond.ac.uk'
+HOST = 'http://xasdb.diamond.ac.uk:8050'
 
 XDI_TMP_DIR = tempfile.TemporaryDirectory()
 
