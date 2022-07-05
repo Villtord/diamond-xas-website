@@ -1,0 +1,22 @@
+name: base
+channels:
+  - conda-forge
+dependencies:
+  - python=3.9
+  - numpy=1.23
+  - scipy=1.8
+  - matplotlib=3.5
+  - pandas=1.4
+  - scikit-learn=1.1
+  - xraylib
+#  - xraylarch
+  - django
+  - django-cleanup
+  - habanero
+  - pillow
+  - six
+  - bokeh
+  - mysqlclient
+  - pip
+  - pip:
+      - ldap3

@@ -17,12 +17,13 @@ from django.conf import settings
 
 from django.db.models import Q
 
-from django.utils.encoding import force_bytes, force_text, smart_str
+from django.utils.encoding import force_bytes, force_str, smart_str
 from django.utils.http import urlsafe_base64_encode, urlsafe_base64_decode
 
 from django.core.mail import mail_admins, send_mail
 
-from .forms import XASFileSubmissionForm, XASDBUserCreationForm, XASUploadAuxDataFormSet, XASFileVerificationForm, XASUploadAuxDataVerificationFormSet, XASDBUserDeletionForm
+from .forms import XASFileSubmissionForm, XASDBUserCreationForm, XASUploadAuxDataFormSet, XASFileVerificationForm, \
+    XASUploadAuxDataVerificationFormSet, XASDBUserDeletionForm
 from .models import XASFile, XASMode, XASArray, XASUploadAuxData
 from .utils import process_xdi_file
 from .tokens import account_activation_token
@@ -33,7 +34,7 @@ import json
 import numpy as np
 import mimetypes
 
-from bokeh.plotting import figure, output_file, show 
+from bokeh.plotting import figure, output_file, show
 from bokeh.embed import components
 from bokeh import __version__ as bokeh_version
 
@@ -42,13 +43,16 @@ import base64
 from habanero import Crossref
 import traceback
 
-#HOST = 'https://xasdb.diamond.ac.uk'
-HOST = 'http://xasdb.diamond.ac.uk:8050'
+# HOST = 'https://xasdb.diamond.ac.uk'
+# HOST = 'http://xasdb.diamond.ac.uk:8050'
+HOST = 'localhost:8085'
 
 XDI_TMP_DIR = tempfile.TemporaryDirectory()
 
 OUR_CITATION = \
-        '''<div style="padding-left:30px">G. Cibin, D. Gianolio, S. A. Parry, T. Schoonjans, O. Moore, R. Draper, L. A. Miller, A. Thoma, C. L. Doswell, and A. Graham. An open access, integrated XAS data repository at Diamond Light Source. <i>XAFS 2018 conference proceedings</i> (2019)</div>''' # add clickable doi url when known!
+    '''<div style="padding-left:30px">G. Cibin, D. Gianolio, S. A. Parry, T. Schoonjans, O. Moore, R. Draper, 
+    L. A. Miller, A. Thoma, C. L. Doswell, and A. Graham. An open access, integrated XAS data repository at Diamond 
+    Light Source. <i>XAFS 2018 conference proceedings</i> (2019)</div>'''  # add clickable doi url when known!
 
 
 class PasswordResetView(auth_views.PasswordResetView):
@@ -58,20 +62,23 @@ class PasswordResetView(auth_views.PasswordResetView):
     email_template_name = 'xasdb1/password-reset-email.html'
     from_email = settings.SERVER_EMAIL
 
+
 class PasswordResetConfirmView(auth_views.PasswordResetConfirmView):
     template_name = 'xasdb1/password-reset-confirm.html'
     success_url = reverse_lazy('xasdb1:password_reset_complete')
 
+
 class PasswordResetDoneView(auth_views.PasswordResetDoneView):
     template_name = 'xasdb1/password-reset-done.html'
+
 
 class PasswordResetCompleteView(auth_views.PasswordResetCompleteView):
     template_name = 'xasdb1/password-reset-complete.html'
 
 
-
 def index(request):
     return render(request, 'xasdb1/index.html')
+
 
 def register(request):
     if request.method == 'POST':
@@ -89,13 +96,17 @@ def register(request):
                 url=reverse('xasdb1:activate', args=[uid, token])
             )
             send_mail('Activate your account', message, settings.SERVER_EMAIL, [user.email])
-            mail_admins('a new user has registered', 'Name: {name}\nEmail: {email}\n\nAn activation email has been sent to the new user for confirmation'.format(name=user.get_full_name(), email=user.email))
-            messages.success(request, 'Account created successfully: please activate using the email that was sent to you')
+            mail_admins('a new user has registered',
+                        'Name: {name}\nEmail: {email}\n\nAn activation email has been sent to the new user for confirmation'.format(
+                            name=user.get_full_name(), email=user.email))
+            messages.success(request,
+                             'Account created successfully: please activate using the email that was sent to you')
             return redirect('xasdb1:index')
     else:
         f = XASDBUserCreationForm()
 
     return render(request, 'xasdb1/register.html', {'form': f})
+
 
 # taken from https://simpleisbetterthancomplex.com/tips/2016/08/04/django-tip-9-password-change-form.html
 @login_required(login_url='xasdb1:login')
@@ -114,6 +125,7 @@ def change_password(request):
     return render(request, 'xasdb1/change_password.html', {
         'form': form
     })
+
 
 @login_required(login_url='xasdb1:login')
 def delete_account(request):
@@ -136,7 +148,7 @@ def delete_account(request):
 
 def activate(request, uidb64, token):
     try:
-        uid = force_text(urlsafe_base64_decode(uidb64))
+        uid = force_str(urlsafe_base64_decode(uidb64))
         user = User.objects.get(pk=uid)
     except(TypeError, ValueError, OverflowError, User.DoesNotExist):
         user = None
@@ -144,10 +156,12 @@ def activate(request, uidb64, token):
         user.is_active = True
         user.save()
         # send email to admins
-        messages.success(request, 'Your account has now been activated. Please login to start uploading and downloading datasets')
+        messages.success(request,
+                         'Your account has now been activated. Please login to start uploading and downloading datasets')
         return redirect('xasdb1:login')
     else:
-        messages.error(request, 'Your activation request has been denied, probably because the link has expired. Please contact the admins to get a new one.')
+        messages.error(request,
+                       'Your activation request has been denied, probably because the link has expired. Please contact the admins to get a new one.')
         return redirect('xasdb1:index')
 
 
@@ -165,14 +179,15 @@ def login(request):
                 messages.success(request, username + ' logged in!')
                 return redirect('xasdb1:index')
             messages.error(request, 'Could not authenticate ' + username)
-        #else:
+        # else:
         #    return
         #    print('Invalid form -> probably means that the username or password is incorrect!')
     else:
         f = AuthenticationForm()
 
     return render(request, 'xasdb1/login.html', {'form': f})
-    
+
+
 def logout(request):
     if not request.user.is_authenticated:
         messages.error(request, 'Not logged in!')
@@ -181,37 +196,46 @@ def logout(request):
     messages.success(request, 'Logged out!')
     return redirect('xasdb1:index')
 
+
 def element(request, element_id):
     # user may be naughty by providing a non-existent element
     if xrl.SymbolToAtomicNumber(element_id) == 0:
-        messages.error(request, 'I am sure you already know that there is no element called ' + element_id + ' . Use the periodic table and stop fooling around.')
+        messages.error(request,
+                       'I am sure you already know that there is no element called ' + element_id + ' . Use the periodic table and stop fooling around.')
         return redirect('xasdb1:index')
 
     # make a distinction between staff and non-staff:
     # 1. staff should be able to see all spectra, regardless of review_status, and should be able to change that review_status
     elif request.user.is_staff:
-        return render(request, 'xasdb1/element.html', {'element': element_id, 'files': XASFile.objects.filter(element=element_id).order_by('sample_name')})
+        return render(request, 'xasdb1/element.html', {'element': element_id,
+                                                       'files': XASFile.objects.filter(element=element_id).order_by(
+                                                           'sample_name')})
 
     # 2. non-staff should be able to see all APPROVED spectra, as well as those uploaded by the user that were either rejected or pending review
     elif request.user.is_authenticated:
         data_filter = Q(uploader=request.user) | (~Q(uploader=request.user) & Q(review_status=XASFile.APPROVED))
-        return render(request, 'xasdb1/element.html', {'element': element_id, 'files': XASFile.objects.filter(element=element_id).filter(data_filter).order_by('sample_name')})
+        return render(request, 'xasdb1/element.html', {'element': element_id,
+                                                       'files': XASFile.objects.filter(element=element_id).filter(
+                                                           data_filter).order_by('sample_name')})
 
     else:
-        return render(request, 'xasdb1/element.html', {'element': element_id, 'files': XASFile.objects.filter(element=element_id).filter(review_status=XASFile.APPROVED).order_by('sample_name')})
+        return render(request, 'xasdb1/element.html', {'element': element_id,
+                                                       'files': XASFile.objects.filter(element=element_id).filter(
+                                                           review_status=XASFile.APPROVED).order_by('sample_name')})
+
 
 @login_required(login_url='xasdb1:login')
 def upload(request):
-    #print(f"request.method: {request.method}")
+    # print(f"request.method: {request.method}")
     if request.method == 'POST':
         form = XASFileSubmissionForm(request.POST, request.FILES)
         upload_aux_formset = XASUploadAuxDataFormSet(request.POST, request.FILES)
         form_is_valid = form.is_valid()
         upload_aux_formset_is_valid = upload_aux_formset.is_valid()
-        #print(f"form_is_valid: {form_is_valid}")
-        #print(f"upload_aux_formset_is_valid: {upload_aux_formset_is_valid}")
+        # print(f"form_is_valid: {form_is_valid}")
+        # print(f"upload_aux_formset_is_valid: {upload_aux_formset_is_valid}")
         if form_is_valid and upload_aux_formset_is_valid:
-            #print("upload::POST -> is_valid")
+            # print("upload::POST -> is_valid")
             value = request.FILES['upload_file']
             value.seek(0)
             temp_xdi_file = os.path.join(XDI_TMP_DIR.name, value.name)
@@ -221,9 +245,11 @@ def upload(request):
             xas_file = process_xdi_file(temp_xdi_file, request)
             # add auxiliary data
             for index, upload_aux_form in enumerate(upload_aux_formset):
-                #print(f"index: {index}")
+                # print(f"index: {index}")
                 try:
-                    xas_file.xasuploadauxdata_set.create(aux_description=upload_aux_form.cleaned_data['aux_description'], aux_file=upload_aux_form.cleaned_data['aux_file'])
+                    xas_file.xasuploadauxdata_set.create(
+                        aux_description=upload_aux_form.cleaned_data['aux_description'],
+                        aux_file=upload_aux_form.cleaned_data['aux_file'])
                 except:
                     pass
             messages.success(request, 'File uploaded')
@@ -232,8 +258,8 @@ def upload(request):
             # send email to maintainers
             mail_admins( \
                 'a new dataset has been uploaded', \
-                'A new dataset has been uploaded by {} ({}).\nPlease process this submission by visiting {}.'.format(request.user.get_full_name(), request.user.email, HOST + new_redirect.url))
-
+                'A new dataset has been uploaded by {} ({}).\nPlease process this submission by visiting {}.'.format(
+                    request.user.get_full_name(), request.user.email, HOST + new_redirect.url))
 
             return new_redirect
     else:
@@ -247,18 +273,19 @@ def upload(request):
         upload_aux_formset = XASUploadAuxDataFormSet(data, initial=[{'aux_description': "", 'aux_file': ""}])
     return render(request, 'xasdb1/upload.html', {'form': form, 'upload_aux_formset': upload_aux_formset})
 
+
 def file(request, file_id):
     # check first if this should be visible for the current user
     file = XASFile.objects.get(id=file_id)
-    #print(f'request.user: {request.user}')
-    #print(f'request.user.is_authenticated: {request.user.is_authenticated}')
-    #print(f'request.user.is_staff: {request.user.is_staff}')
-    #print(f'file.uploader: {file.uploader}')
-    #print(f'file.review_status: {file.review_status}')
-    if (not request.user.is_authenticated and file.review_status != XASFile.APPROVED) or (not request.user.is_staff and request.user != file.uploader and file.review_status != XASFile.APPROVED):
+    # print(f'request.user: {request.user}')
+    # print(f'request.user.is_authenticated: {request.user.is_authenticated}')
+    # print(f'request.user.is_staff: {request.user.is_staff}')
+    # print(f'file.uploader: {file.uploader}')
+    # print(f'file.review_status: {file.review_status}')
+    if (not request.user.is_authenticated and file.review_status != XASFile.APPROVED) or (
+            not request.user.is_staff and request.user != file.uploader and file.review_status != XASFile.APPROVED):
         messages.error(request, 'The requested file is not accessible')
         return redirect('xasdb1:index')
-
 
     # get modes
     file = XASFile.objects.get(id=file_id)
@@ -277,7 +304,7 @@ def file(request, file_id):
                 energy = np.array(json.loads(file.xasarray_set.get(name='energy').array))
                 i0 = np.array(json.loads(file.xasarray_set.get(name='i0').array))
                 itrans = np.array(json.loads(file.xasarray_set.get(name='itrans').array))
-                mutrans = -np.log(itrans/i0)
+                mutrans = -np.log(itrans / i0)
             except Exception as e:
                 messages.error(request, 'Could not extract data from transmission spectrum: ' + str(e))
         elif mode == XASMode.FLUORESCENCE or mode == XASMode.FLUORESCENCE_UNITSTEP:
@@ -285,7 +312,7 @@ def file(request, file_id):
                 energy = np.array(json.loads(file.xasarray_set.get(name='energy').array))
                 i0 = np.array(json.loads(file.xasarray_set.get(name='i0').array))
                 ifluor = np.array(json.loads(file.xasarray_set.get(name='ifluor').array))
-                mutrans = ifluor/i0
+                mutrans = ifluor / i0
             except Exception as e:
                 messages.error(request, 'Could not extract data from fluorescence spectrum: ' + str(e))
         elif mode == XASMode.XMU:
@@ -298,12 +325,11 @@ def file(request, file_id):
         else:
             messages.error(request, 'Unsupported mode detected!')
 
-        
         if len(list(filter(lambda message: message.level_tag != 'success', messages.get_messages(request)))) == 0:
             murefer = None
             try:
                 irefer = np.array(json.loads(file.xasarray_set.get(name='irefer').array))
-                murefer = -np.log(irefer/itrans)
+                murefer = -np.log(irefer / itrans)
             except:
                 pass
             plots.append(_file_plot(energy, mutrans, "Energy (eV)", yaxis_title))
@@ -311,7 +337,7 @@ def file(request, file_id):
     # try getting the doi information
     try:
         # this should probably get cached -> TODO
-        cr = Crossref(mailto = "Tom.Schoonjans@diamond.ac.uk") # necessary to end up in the polite pool
+        cr = Crossref(mailto="victor.rogalev@diamond.ac.uk")  # necessary to end up in the polite pool
         doi = {}
         work = cr.works(ids=file.upload_file_doi)
         doi['title'] = work['message']['title'][0]
@@ -327,27 +353,34 @@ def file(request, file_id):
             family = author['family']
             authorlist += family
             if len(work['message']['author']) > 1:
-                    if index == len(work['message']['author']) - 2:
-                        authorlist += ' and '
-                    elif index != len(work['message']['author']) - 1:
-                        authorlist += ', '
-                        
+                if index == len(work['message']['author']) - 2:
+                    authorlist += ' and '
+                elif index != len(work['message']['author']) - 1:
+                    authorlist += ', '
+
         doi['authors'] = authorlist
-        doi['citation'] = "{authors}. {title}, <i>{journal}</i> ({year}).".format(authors=doi['authors'], title=doi['title'], journal=doi['journal'], year=doi['year'])
+        doi['citation'] = "{authors}. {title}, <i>{journal}</i> ({year}).".format(authors=doi['authors'],
+                                                                                  title=doi['title'],
+                                                                                  journal=doi['journal'],
+                                                                                  year=doi['year'])
         message = \
-                '''By downloading this file, I agree to cite its original authors' manuscript:<br><div style="padding-left: 30px"><a href="{}">{}</a></div><br>as well as the manuscript covering this website:<br>{}'''.format(doi['url'], doi['citation'], OUR_CITATION)
+            '''By downloading this file, I agree to cite its original authors' manuscript:<br><div 
+            style="padding-left: 30px"><a href="{}">{}</a></div><br>as well as the manuscript covering this 
+            website:<br>{}'''.format(
+                doi['url'], doi['citation'], OUR_CITATION)
     except Exception as e:
         print(f'file.upload_file_doi: {file.upload_file_doi}')
         traceback.print_exc()
         doi = None
         message = \
-'''By downloading this file, I agree to cite the manuscript of this website {}'''.format(doi['citation'], OUR_CITATION)
+            '''By downloading this file, I agree to cite the manuscript of this website {}'''.format(doi['citation'],
+                                                                                                     OUR_CITATION)
 
     form = None
     formset = None
     if request.user.is_staff:
         if request.method == 'POST':
-            #for key, values in request.POST.lists():
+            # for key, values in request.POST.lists():
             #    print(key, values)
             form = XASFileVerificationForm(request.POST, instance=file)
             formset = XASUploadAuxDataVerificationFormSet(request.POST, instance=file)
@@ -363,19 +396,23 @@ def file(request, file_id):
             formset = XASUploadAuxDataVerificationFormSet(instance=file)
     elif request.method == 'POST':
         # naughty
-        #for key, values in request.POST.lists():
+        # for key, values in request.POST.lists():
         #    print(key, values)
         messages.error(request, 'Only staff can make file POST requests!')
         return redirect('xasdb1:index')
 
-    return render(request, 'xasdb1/file.html', {'file' : file, 'plots': plots, 'aux' : file.xasuploadauxdata_set.all(), 'doi' : doi, 'bokeh_version': bokeh_version, 'message': message, 'form': form, 'formset': formset})
-    
+    return render(request, 'xasdb1/file.html',
+                  {'file': file, 'plots': plots, 'aux': file.xasuploadauxdata_set.all(), 'doi': doi,
+                   'bokeh_version': bokeh_version, 'message': message, 'form': form, 'formset': formset})
+
 
 def _file_plot(xaxis, yaxis, xaxis_name, yaxis_name):
-    plot = figure(x_axis_label = xaxis_name, y_axis_label = yaxis_name, plot_width = 500, plot_height = 400, tooltips = [('(x, y)', '($x, $y)')])
+    plot = figure(x_axis_label=xaxis_name, y_axis_label=yaxis_name, plot_width=500, plot_height=400,
+                  tooltips=[('(x, y)', '($x, $y)')])
     plot.hover.mode = 'vline'
     plot.line(xaxis, yaxis, line_width=2)
     return dict(zip(('script', 'div'), components(plot)))
+
 
 @login_required(login_url='xasdb1:login')
 def download(request, path_id):
@@ -410,7 +447,6 @@ def download(request, path_id):
         files[1].xasdownloadfile_set.create(downloader=request.user)
     elif isinstance(files[1], XASUploadAuxData):
         files[1].xasdownloadauxdata_set.create(downloader=request.user)
-
 
     # inspired by https://stackoverflow.com/q/15246661/1253230
     file_path = settings.MEDIA_ROOT + '/' + path_id

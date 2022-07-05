@@ -20,7 +20,9 @@ class Migration(migrations.Migration):
             name='XASFile',
             fields=[
                 ('id', models.AutoField(auto_created=True, primary_key=True, serialize=False, verbose_name='ID')),
-                ('upload_file', models.FileField(upload_to='uploads/%Y/%m/%d/', validators=[xasdb1.models.file_size_valid, xasdb1.models.xdi_valid])),
+                # ('upload_file', models.FileField(upload_to='uploads/%Y/%m/%d/', validators=[xasdb1.models.file_size_valid, xasdb1.models.xdi_valid])),
+                ('upload_file', models.FileField(upload_to='uploads/%Y/%m/%d/',
+                                                 validators=[xasdb1.models.file_size_valid])),
                 ('upload_file_doi', models.CharField(default='', max_length=256, validators=[xasdb1.models.doi_valid], verbose_name='Citation DOI')),
                 ('upload_timestamp', models.DateTimeField(auto_now_add=True, verbose_name='date published')),
                 ('element', models.CharField(max_length=3, validators=[xasdb1.models.mendeljev_valid])),

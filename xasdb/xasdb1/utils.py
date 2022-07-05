@@ -1,5 +1,5 @@
 import json
-import xdifile
+from larch.io import read_xdi
 import xraylib as xrl
 import numpy as np
 from datetime import datetime, timezone
@@ -18,10 +18,12 @@ OPTIONAL_KWARGS = ( \
 
 def process_xdi_file(temp_xdi_file, request):
     value = request.FILES['upload_file']
-    xdi_file = xdifile.XDIFile(filename=temp_xdi_file)
+    xdi_file = read_xdi(filename=temp_xdi_file)
     value.seek(0)
-    element = xdi_file.element.decode('utf-8')
-    edge = xdi_file.edge.decode('utf-8')
+    element = xdi_file.element
+    print(f'Element: {element}')
+    edge = xdi_file.edge
+    print(f'Edge: {edge}')
     for pair in XASFile.EDGE_CHOICES:
         if edge == pair[1]:
             edge = pair[0]

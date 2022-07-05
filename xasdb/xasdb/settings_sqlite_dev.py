@@ -1,4 +1,5 @@
 from xasdb.settings import *
+from xasdb.settings import BASE_DIR
 import os
 
 SECRET_KEY = 'jrr&b&3bqx6uxs^nf1wt2_36ky0w+e!yo$c8$h*m=mi_)c+!y6'

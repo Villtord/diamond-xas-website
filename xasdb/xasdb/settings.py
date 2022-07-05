@@ -15,7 +15,11 @@ import os
 # Quick-start development settings - unsuitable for production
 # See https://docs.djangoproject.com/en/2.0/howto/deployment/checklist/
 
+DEBUG = True
+
 # SECURITY WARNING: keep the secret key used in production secret!
+
+SECRET_KEY = '8lu*6g0lg)9z!ba+a$ehk)xt)x%rxgb$i1&amp;022shmi1jcgihb*'
 
 BASE_DIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 
@@ -114,7 +118,8 @@ FILE_UPLOAD_PERMISSIONS = 0o600
 FILE_UPLOAD_DIRECTORY_PERMISSIONS = 0o700
 
 # email stuff
-ADMINS = [('Tom Schoonjans', 'Tom.Schoonjans@diamond.ac.uk')]
+# ADMINS = [('Tom Schoonjans', 'Tom.Schoonjans@diamond.ac.uk')]
+ADMINS = [('Victor Rogalev', 'victor.rogalev@diamond.ac.uk')]
 EMAIL_BACKEND = 'django.core.mail.backends.smtp.EmailBackend'
 EMAIL_SUBJECT_PREFIX = '[XASDB] '
 SERVER_EMAIL = "donotreply@xasdb.diamond.ac.uk"

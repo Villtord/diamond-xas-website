@@ -4,7 +4,7 @@ from django.core.exceptions import ValidationError
 import django
 from django.conf import settings
 
-import xdifile
+from larch.io import read_xdi
 import tempfile
 import os.path
 from os.path import exists
@@ -22,7 +22,7 @@ XDI_TMP_DIR = tempfile.TemporaryDirectory()
 
 def doi_valid(value):
     try:
-        cr = Crossref(mailto = "Tom.Schoonjans@diamond.ac.uk") # necessary to end up in the polite pool
+        cr = Crossref(mailto = "victor.rogalev@diamond.ac.uk") # necessary to end up in the polite pool
         work = cr.works(ids=value)
         work['message']['title']
     except Exception as e:
@@ -48,7 +48,7 @@ def xdi_valid(value):
         with open(temp_xdi_file, 'w') as f:
             f.write(value.read().decode('utf-8'))
 
-        xdi_file = xdifile.XDIFile(filename=temp_xdi_file)
+        xdi_file = read_xdi(filename=temp_xdi_file)
         if xdi_file.element.decode('utf-8') == '':
             raise Exception('no element found')
         return
@@ -64,7 +64,8 @@ class XASFile(models.Model):
 
     EDGE_CHOICES = ((xrl.K_SHELL, "K"), (xrl.L1_SHELL, "L1"), (xrl.L2_SHELL, "L2"), (xrl.L3_SHELL, "L3"))
 
-    upload_file = models.FileField(upload_to='uploads/%Y/%m/%d/', validators=[file_size_valid, xdi_valid])
+    # upload_file = models.FileField(upload_to='uploads/%Y/%m/%d/', validators=[file_size_valid, xdi_valid])
+    upload_file = models.FileField(upload_to='uploads/%Y/%m/%d/', validators=[file_size_valid])
     upload_file_doi = models.CharField('Citation DOI', max_length=256, default='', validators=[doi_valid])
     upload_timestamp = models.DateTimeField('date published', auto_now_add=True)
     element = models.CharField(max_length=3, validators=[mendeljev_valid])
@@ -96,7 +97,11 @@ class XASMode(models.Model):
     FLUORESCENCE = 1
     FLUORESCENCE_UNITSTEP = 2
     XMU = 3
-    MODE_CHOICES = ((UNKNOWN, "Unknown"), (TRANSMISSION, "Transmission"), (FLUORESCENCE, "Fluorescence"), (FLUORESCENCE_UNITSTEP, "Fluorescence, unitstep"), (XMU, "Normalized absorption spectrum"))
+    MODE_CHOICES = ((UNKNOWN, "Unknown"),
+                    (TRANSMISSION, "Transmission"),
+                    (FLUORESCENCE, "Fluorescence"),
+                    (FLUORESCENCE_UNITSTEP, "Fluorescence, unitstep"),
+                    (XMU, "Normalized absorption spectrum"))
 
     file = models.ForeignKey(XASFile, on_delete=models.CASCADE)
     mode = models.SmallIntegerField(choices=MODE_CHOICES, default=UNKNOWN)

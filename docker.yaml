@@ -1,0 +1,28 @@
+FROM conda/miniconda3-centos7:latest
+
+USER root
+
+RUN yum -y update && yum clean all
+RUN yum install -y vim
+# This tells the container to look up usernames using ldap. It then connects to the socket on the worker that you have mounted into the container. This will then allow proper name resolution
+RUN yum install -y nss-pam-ldapd
+RUN sed -i 's/sss/ldap/g' /etc/nsswitch.conf
+
+COPY xasdb/. /app
+RUN chmod 777 /app
+RUN conda env update --file app/requirements.yaml
+#RUN conda install -n base -c conda-forge -y mamba
+#RUN mamba env update --file app/requirements.yaml
+#RUN mkdir /.local && chmod 777 /.local
+
+#WORKDIR /app
+
+# Setup admin and database parameters
+# RUN python manage.py migrate
+
+EXPOSE 8085
+
+ENTRYPOINT ["/bin/sh"]
+
+#CMD ["manage.py runserver"]
+

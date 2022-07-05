@@ -1,0 +1,59 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: xas-database-deployment-test
+spec:
+  selector:
+    matchLabels:
+      app: k8s-xas-database-test
+  replicas: 1
+  template:
+    metadata:
+      name: xas-database-test-pod
+      labels:
+        app: k8s-xas-database-test
+    spec:
+      securityContext:
+        runAsUser: 1102814
+        runAsGroup: 1102814
+        supplementalGroups:
+          - 37900
+      volumes:
+        - name: home
+          hostPath:
+            path: /home
+            type: Directory
+        - name: nslcd
+          hostPath:
+            path: /var/run/nslcd/socket
+      containers:
+        - name: k8s-xas-database-test
+          securityContext:
+            privileged: false
+          image: gcr.io/diamond-privreg/xas-database/k8s-xas-database:test
+          command: [ "/bin/sh" ]
+          args: [ "-c", "while true; do sleep 10; done" ]
+          ports:
+            - containerPort: 8085
+          volumeMounts:
+            - mountPath: /home
+              name: home
+              mountPropagation: HostToContainer
+            - mountPath: /var/run/nslcd/socket
+              name: nslcd
+          imagePullPolicy: Always
+
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: xas-database-service-test # example service name that the ingress will target
+spec:
+  ports:
+  - name: http
+    port: 80
+    protocol: TCP
+    targetPort: 8085
+  selector:
+    app: k8s-xas-database-test
+  type: LoadBalancer
