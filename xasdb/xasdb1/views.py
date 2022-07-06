@@ -45,7 +45,8 @@ import traceback
 
 # HOST = 'https://xasdb.diamond.ac.uk'
 # HOST = 'http://xasdb.diamond.ac.uk:8050'
-HOST = 'localhost:8085'
+# HOST = 'localhost:8085'
+HOST = os.environ.get('HOST')
 
 XDI_TMP_DIR = tempfile.TemporaryDirectory()
 
@@ -93,7 +94,11 @@ def register(request):
             message = 'Hi {user},\nPlease click on the link to confirm your registration,\n\n{domain}{url}'.format(
                 user=user.get_full_name(),
                 domain=HOST,
-                url=reverse('xasdb1:activate', args=[uid, token])
+                # This is valid for K8s run
+                url=reverse('xasdb1:activate', args=[uid, token]).replace(os.environ.get('HOST'),
+                                                                          os.environ.get('SERVICE_HOST'), 1)
+                # # This is valid for podman local run
+                # url=reverse('xasdb1:activate', args=[uid, token])
             )
             send_mail('Activate your account', message, settings.SERVER_EMAIL, [user.email])
             mail_admins('a new user has registered',

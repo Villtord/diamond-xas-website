@@ -20,9 +20,19 @@ RUN rm Miniconda3-latest-Linux-x86_64.sh
 
 # install django app and dependencies
 COPY xasdb/. /app
-RUN chmod 777 /app && chmod 777 /root && chmod 777 /usr
-RUN conda env update --file app/requirements_mamba.yaml
+
+RUN conda env update --file app/requirements.yaml
+
+# this will run as root but not as user at K8s - no further write access to created folders!
+#RUN python /app/manage.py migrate
+
+RUN chmod -R 777 /app && chmod 777 /root && chmod 777 /usr
+
+# this will run as root but not as user at K8s - no further write access to created folders!
+#RUN python -c "import larch"
 
 EXPOSE 8085
+
+WORKDIR /app
 
 ENTRYPOINT ["/bin/sh"]

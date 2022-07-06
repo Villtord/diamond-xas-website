@@ -1,0 +1,11 @@
+DEBUG=True
+SERVICE_HOST=172.23.169.13
+HOME=/app/
+MPLCONFIGDIR=/app/config/
+STATIC_URL=/static/
+STATIC_ROOT=/app/xasdb1/static/
+AUTHENTICATION_BACKENDS=django.contrib.auth.backends.AllowAllUsersModelBackend
+MEDIA_ROOT=/app/media/
+FILE_UPLOAD_PERMISSIONS=0o600
+FILE_UPLOAD_DIRECTORY_PERMISSIONS=0o700
+HOST=localhost:8085

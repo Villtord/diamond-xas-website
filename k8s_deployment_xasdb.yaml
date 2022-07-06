@@ -32,6 +32,9 @@ spec:
             privileged: false
           image: gcr.io/diamond-privreg/xas-database/k8s-xas-database:latest
           command: [ "/bin/sh" ]
+          envFrom:
+            - configMapRef:
+                name: xasdb-configmap
           args: [ "-c", "while true; do sleep 10; done" ]
           ports:
             - containerPort: 8085
