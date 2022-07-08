@@ -37,16 +37,16 @@
 <body style="margin:10;padding:10">
 	<div id="topmenu">
 		<ul>
-			<li><a href="https://www.diamond.ac.uk" class="homehome"><img src="https://www.diamond.ac.uk/resources/templating-kit/themes/diamond-lite/img/topmenulogo.png" alt="Diamond Home Page" title="Diamond Home Page" /></a></li>
+			<li><a href="https://www.diamond.ac.uk" class="homehome"><img src="https://www.diamond.ac.uk/.resources/DiamondLightModule/webresources/img/topmenulogo.png" alt="Diamond Home Page" title="Diamond Home Page" /></a></li>
 			<li><a class="textmenu XASDB" href="{% url 'xasdb1:index' %}">XASDB</a></li>
 			{% if user.is_authenticated %}
 			<li><a class="textmenu logout" href="{% url 'xasdb1:logout' %}">Logout</a></li>
 			<li><a class="textmenu upload" href="{% url 'xasdb1:upload' %}">Upload</a></li>
 			<!--<li><div class="textmenu welcome" style="color:#CCCCCC;padding 10px 10px 6px;font-size: 1.10em;padding-bottom:10px;padding-top:16px;float:left;padding-left:10px">Welcome back {{ user.get_short_name }}!</div></li>-->
-			<li><div class="settingsbuttondiv" style="float: left; overflow:hidden">
+			<li><div class="settingsbuttondiv">
 					<!--<button class="settingsbutton">Settings</button>-->
 					<button class="textmenu dropbtn" style="font-size: 1.10em" onclick="myFunction()" >Settings <i class="fa fa-caret-down"></i></button>
-					<div class="settings-content" id="mySettings" style="position: absolute;margin-top: 2.8rem;">
+					<div class="settings-content" id="mySettings" style="position: absolute;margin-top: 2.8rem;margin-left: -7rem;">
 						<ul style="width: 110px; margin: 0; float:none">
 							<li><a href="{% url 'xasdb1:change_password' %}" style="width: 200px;border-right: 0px">Change Password</a></li>
 							<li><a href="{% url 'xasdb1:delete_account' %}" style="width: 200px;border-right: 0px">Delete Account</a></li>

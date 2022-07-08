@@ -93,10 +93,9 @@ def register(request):
             token = account_activation_token.make_token(user)
             message = 'Hi {user},\nPlease click on the link to confirm your registration,\n\n{domain}{url}'.format(
                 user=user.get_full_name(),
-                domain=HOST,
+                domain=os.environ.get('SERVICE_HOST'),
                 # This is valid for K8s run
-                url=reverse('xasdb1:activate', args=[uid, token]).replace(os.environ.get('HOST'),
-                                                                          os.environ.get('SERVICE_HOST'), 1)
+                url=reverse('xasdb1:activate', args=[uid, token])
                 # # This is valid for podman local run
                 # url=reverse('xasdb1:activate', args=[uid, token])
             )

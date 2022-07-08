@@ -46,7 +46,7 @@ th {
 }
 
 .settingsbuttondiv {
-  float: left;
+  float: right;
   overflow: hidden;
 }
 
@@ -62,7 +62,7 @@ th {
 }
 
 .settingsbuttondiv div:hover {
-  background: none repeat scroll 0 0 #042044;
+  background: none repeat scroll 0 0 #8e918d;
   color: #FFFFFF;
 }
 
@@ -70,7 +70,7 @@ th {
   display: none;
   position: absolute;
   background-color: #f9f9f9;
-  min-width: 160px;
+  min-width: 220px;
   box-shadow: 0px 8px 16px 0px rgba(0,0,0,0.2);
   z-index: 1;
 }
@@ -107,4 +107,32 @@ th {
 #topmenu button:hover {
   background: none repeat scroll 0 0 #042044;
   color: #FFFFFF;
+}
+
+#topmenu li{
+  display: inline;
+}
+
+#topmenu {
+  background: none repeat scroll 0 0 #072B5D;
+  float: left;
+  list-style-type: none;
+   margin: 0;
+   padding: 0;
+   width: 100%;
+   min-width: 980px;
+}
+
+#topmenu a{
+  // border-right: 1px solid #FFFFFF;
+  color: #eee;
+  // display: block;
+  float: left;
+margin: 0;
+padding: 3px 15px 12px;
+}
+
+#topmenu .textmenu {
+    padding-bottom: 11px;
+    padding-top: 16px;
 }

@@ -130,6 +130,9 @@ MEDIA_ROOT = os.environ.get('MEDIA_ROOT')
 FILE_UPLOAD_PERMISSIONS = int(os.environ.get('FILE_UPLOAD_PERMISSIONS'), 8)
 FILE_UPLOAD_DIRECTORY_PERMISSIONS = int(os.environ.get('FILE_UPLOAD_DIRECTORY_PERMISSIONS'), 8)
 
+# SMTP settings
+EMAIL_HOST = os.environ.get('EMAIL_HOST')
+EMAIL_PORT = int(os.environ.get('EMAIL_PORT'))
 
 # email stuff
 # ADMINS = [('Tom Schoonjans', 'Tom.Schoonjans@diamond.ac.uk')]

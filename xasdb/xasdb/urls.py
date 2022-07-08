@@ -18,9 +18,10 @@ from django.urls import path
 from django.conf import settings
 from django.conf.urls.static import static
 from django.urls import include
-
+from django.shortcuts import redirect
 
 urlpatterns = [
+    path('', lambda request: redirect('xasdb1/')),
     path('xasdb1/', include('xasdb1.urls')),
     path('admin/', admin.site.urls),
 ] + static(settings.STATIC_URL, document_root=settings.STATIC_ROOT)
