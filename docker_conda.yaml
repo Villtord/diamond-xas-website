@@ -1,0 +1,29 @@
+# this image resulted in 7.2 GB disk space
+FROM conda/miniconda3-centos7:latest
+
+USER root
+
+RUN yum -y update && yum clean all
+RUN yum install -y vim
+
+# install django app and dependencies
+COPY xasdb/. /app
+
+#update pre-installed conda packages
+RUN conda update -c conda-forge -y --all
+
+RUN conda env update --file app/requirements.yaml
+
+# this will run as root but not as user at K8s - no further write access to created folders!
+#RUN python /app/manage.py migrate
+
+RUN chmod -R 777 /app && chmod 777 /root && chmod 777 /usr
+
+# this will run as root but not as user at K8s - no further write access to created folders!
+#RUN python -c "import larch"
+
+EXPOSE 8085
+
+WORKDIR /app
+
+ENTRYPOINT ["/bin/sh"]

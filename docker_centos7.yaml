@@ -1,3 +1,4 @@
+# this image resulted in 6.7 GB disk space
 FROM centos:7
 
 USER root
@@ -21,7 +22,8 @@ RUN rm Miniconda3-latest-Linux-x86_64.sh
 # install django app and dependencies
 COPY xasdb/. /app
 
-RUN conda env update --file app/requirements.yaml
+#RUN conda env update --file app/requirements.yaml
+RUN conda env update --file app/requirements_djongo.yaml
 
 # this will run as root but not as user at K8s - no further write access to created folders!
 #RUN python /app/manage.py migrate

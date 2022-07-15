@@ -1,22 +1,19 @@
-from django.db import models
+# from django.db import models
+import base64
+import imghdr
+import os.path
+import tempfile
+from io import BytesIO
+
+import django
+import xraylib as xrl
+from PIL import Image
 from django.contrib.auth.models import User
 from django.core.exceptions import ValidationError
-import django
-from django.conf import settings
-
-from larch.io import read_xdi
-import tempfile
-import os.path
-from os.path import exists
-import xraylib as xrl
+# from djongo import models
+from django.db import models
 from habanero import Crossref
-import imghdr
-import base64
-
-from PIL import Image
-from io import BytesIO
-import sys
-
+from larch.io import read_xdi
 
 XDI_TMP_DIR = tempfile.TemporaryDirectory()
 

@@ -117,6 +117,7 @@ USE_TZ = True
 # FILE_UPLOAD_PERMISSIONS = 0o600
 # FILE_UPLOAD_DIRECTORY_PERMISSIONS = 0o700
 
+
 # This section is valid for K8s run!
 # Static files (CSS, JavaScript, Images)
 # https://docs.djangoproject.com/en/4.0/howto/static-files/

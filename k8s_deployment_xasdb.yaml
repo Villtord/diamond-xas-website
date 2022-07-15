@@ -1,7 +1,7 @@
 apiVersion: apps/v1
 kind: Deployment
 metadata:
-  name: xas-database-deployment
+  name: xasdb-deployment
 spec:
   selector:
     matchLabels:
@@ -35,6 +35,8 @@ spec:
           envFrom:
             - configMapRef:
                 name: xasdb-configmap
+            - configMapRef:
+                name: mongo-xasdb-configmap
           args: [ "-c", "while true; do sleep 10; done" ]
           ports:
             - containerPort: 8085

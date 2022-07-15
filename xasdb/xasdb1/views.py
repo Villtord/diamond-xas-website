@@ -1,47 +1,38 @@
-from django.shortcuts import (render, redirect)
-from django.http import HttpResponse, FileResponse
-from django.urls import reverse, reverse_lazy
+import json
+import mimetypes
+import os.path
+import tempfile
+import traceback
 
-from django.contrib.auth.decorators import login_required
+import numpy as np
+import xraylib as xrl
+from bokeh import __version__ as bokeh_version
+from bokeh.embed import components
+from bokeh.plotting import figure
+from django.conf import settings
 from django.contrib import messages
-from django.contrib.auth.forms import AuthenticationForm, PasswordChangeForm
-from django.contrib.auth.models import User
-from django.contrib.sites.shortcuts import get_current_site
-
 from django.contrib.auth import authenticate, update_session_auth_hash
 from django.contrib.auth import login as _login
 from django.contrib.auth import logout as _logout
 from django.contrib.auth import views as auth_views
-
-from django.conf import settings
-
-from django.db.models import Q
-
-from django.utils.encoding import force_bytes, force_str, smart_str
-from django.utils.http import urlsafe_base64_encode, urlsafe_base64_decode
-
+from django.contrib.auth.decorators import login_required
+from django.contrib.auth.forms import AuthenticationForm, PasswordChangeForm
+from django.contrib.auth.models import User
+from django.contrib.sites.shortcuts import get_current_site
 from django.core.mail import mail_admins, send_mail
+from django.db.models import Q
+from django.http import FileResponse
+from django.shortcuts import (render, redirect)
+from django.urls import reverse, reverse_lazy
+from django.utils.encoding import force_bytes, force_str
+from django.utils.http import urlsafe_base64_encode, urlsafe_base64_decode
+from habanero import Crossref
 
 from .forms import XASFileSubmissionForm, XASDBUserCreationForm, XASUploadAuxDataFormSet, XASFileVerificationForm, \
     XASUploadAuxDataVerificationFormSet, XASDBUserDeletionForm
-from .models import XASFile, XASMode, XASArray, XASUploadAuxData
-from .utils import process_xdi_file
+from .models import XASFile, XASMode, XASUploadAuxData
 from .tokens import account_activation_token
-
-import xraylib as xrl
-import tempfile
-import json
-import numpy as np
-import mimetypes
-
-from bokeh.plotting import figure, output_file, show
-from bokeh.embed import components
-from bokeh import __version__ as bokeh_version
-
-import os.path
-import base64
-from habanero import Crossref
-import traceback
+from .utils import process_xdi_file
 
 # HOST = 'https://xasdb.diamond.ac.uk'
 # HOST = 'http://xasdb.diamond.ac.uk:8050'
