@@ -30,7 +30,7 @@ spec:
         - name: k8s-xas-database
           securityContext:
             privileged: false
-          image: gcr.io/diamond-privreg/xas-database/k8s-xas-database:latest
+          image: gcr.io/diamond-privreg/xas-database/k8s-xas-database:test
           command: [ "/bin/sh" ]
           envFrom:
             - configMapRef:

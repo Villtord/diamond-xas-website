@@ -254,7 +254,8 @@ def upload(request):
             mail_admins( \
                 'a new dataset has been uploaded', \
                 'A new dataset has been uploaded by {} ({}).\nPlease process this submission by visiting {}.'.format(
-                    request.user.get_full_name(), request.user.email, HOST + new_redirect.url))
+                    request.user.get_full_name(), request.user.email,
+                    os.environ.get('SERVICE_HOST') + new_redirect.url))
 
             return new_redirect
     else:
@@ -296,24 +297,24 @@ def file(request, file_id):
         yaxis_title = "Raw XAFS"
         if mode == XASMode.TRANSMISSION:
             try:
-                energy = np.array(json.loads(file.xasarray_set.get(name='energy').array))
-                i0 = np.array(json.loads(file.xasarray_set.get(name='i0').array))
-                itrans = np.array(json.loads(file.xasarray_set.get(name='itrans').array))
+                energy = np.array(json.loads(file.xasarray_set.get(name='energy').array), np.float64)
+                i0 = np.array(json.loads(file.xasarray_set.get(name='i0').array), np.float64)
+                itrans = np.array(json.loads(file.xasarray_set.get(name='itrans').array), np.float64)
                 mutrans = -np.log(itrans / i0)
             except Exception as e:
                 messages.error(request, 'Could not extract data from transmission spectrum: ' + str(e))
         elif mode == XASMode.FLUORESCENCE or mode == XASMode.FLUORESCENCE_UNITSTEP:
             try:
-                energy = np.array(json.loads(file.xasarray_set.get(name='energy').array))
-                i0 = np.array(json.loads(file.xasarray_set.get(name='i0').array))
-                ifluor = np.array(json.loads(file.xasarray_set.get(name='ifluor').array))
+                energy = np.array(json.loads(file.xasarray_set.get(name='energy').array), np.float64)
+                i0 = np.array(json.loads(file.xasarray_set.get(name='i0').array), np.float64)
+                ifluor = np.array(json.loads(file.xasarray_set.get(name='ifluor').array), np.float64)
                 mutrans = ifluor / i0
             except Exception as e:
                 messages.error(request, 'Could not extract data from fluorescence spectrum: ' + str(e))
         elif mode == XASMode.XMU:
             try:
-                energy = np.array(json.loads(file.xasarray_set.get(name='energy').array))
-                mutrans = np.array(json.loads(file.xasarray_set.get(name='xmu').array))
+                energy = np.array(json.loads(file.xasarray_set.get(name='energy').array), np.float64)
+                mutrans = np.array(json.loads(file.xasarray_set.get(name='xmu').array), np.float64)
                 yaxis_title = "Normalized absorption spectrum"
             except Exception as e:
                 messages.error(request, 'Could not extract data from normalized absorption spectrum: ' + str(e))
@@ -323,7 +324,7 @@ def file(request, file_id):
         if len(list(filter(lambda message: message.level_tag != 'success', messages.get_messages(request)))) == 0:
             murefer = None
             try:
-                irefer = np.array(json.loads(file.xasarray_set.get(name='irefer').array))
+                irefer = np.array(json.loads(file.xasarray_set.get(name='irefer').array), np.float64)
                 murefer = -np.log(irefer / itrans)
             except:
                 pass
@@ -403,9 +404,9 @@ def file(request, file_id):
 
 def _file_plot(xaxis, yaxis, xaxis_name, yaxis_name):
     plot = figure(x_axis_label=xaxis_name, y_axis_label=yaxis_name, plot_width=500, plot_height=400,
-                  tooltips=[('(x, y)', '($x, $y)')])
+                  tooltips=[('(x, y)', '($x, $y)')],output_backend="webgl")
     plot.hover.mode = 'vline'
-    plot.line(xaxis, yaxis, line_width=2)
+    plot.line(xaxis, yaxis, line_width=2, color="#22aa22")
     return dict(zip(('script', 'div'), components(plot)))
 
 
@@ -414,14 +415,14 @@ def download(request, path_id):
     # figure out who this file belongs to
     try:
         # check if path_id corresponds to XDI file
-        file = XASFile.objects.get(upload_file=path_id)
+        file = XASFile.objects.get(upload_file=path_id[1:])  # somehow first / is not needed here
         files = (file, file)
     except Exception:
         # check if path_id corresponds to AUX file
         files = None
         for xasfile in XASFile.objects.all():
             for auxfile in xasfile.xasuploadauxdata_set.all():
-                if auxfile.aux_file.name == path_id:
+                if auxfile.aux_file.name == path_id[1:]:  # somehow first / is not needed here
                     files = (xasfile, auxfile)
                     break
             else:

@@ -12,7 +12,7 @@ ALLOWED_HOSTS = [os.environ.get('SERVICE_HOST')]
 DATABASES = {
         'default': {
             'ENGINE': 'djongo',
-            'NAME': 'xasdb-mongo-djongo',
+            'NAME': 'xasdb',
             'ENFORCE_SCHEMA': False,
             'CLIENT': {
                 'host': os.environ.get('MONGO_DB_HOST'),
@@ -25,7 +25,7 @@ DATABASES = {
             #     'loggers': {
             #         'djongo': {
             #             'level': 'DEBUG',
-            #             'propagate': False,
+            #             'propagate': True,
             #         }
             #     },
             # },

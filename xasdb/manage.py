@@ -3,8 +3,8 @@ import os
 import sys
 
 if __name__ == "__main__":
-    os.environ.setdefault("DJANGO_SETTINGS_MODULE", "xasdb.settings_sqlite_dev")
-    # os.environ.setdefault("DJANGO_SETTINGS_MODULE", "xasdb.settings_mongodb")
+    # os.environ.setdefault("DJANGO_SETTINGS_MODULE", "xasdb.settings_sqlite_dev")
+    os.environ.setdefault("DJANGO_SETTINGS_MODULE", "xasdb.settings_mongodb")
     try:
         from django.core.management import execute_from_command_line
     except ImportError as exc:

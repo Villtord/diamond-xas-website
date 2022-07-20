@@ -1,4 +1,3 @@
-# from django.db import models
 import base64
 import imghdr
 import os.path
@@ -10,25 +9,28 @@ import xraylib as xrl
 from PIL import Image
 from django.contrib.auth.models import User
 from django.core.exceptions import ValidationError
-# from djongo import models
-from django.db import models
+from djongo import models
+# from django.db import models
 from habanero import Crossref
-from larch.io import read_xdi
+from .core import *
 
 XDI_TMP_DIR = tempfile.TemporaryDirectory()
 
+
 def doi_valid(value):
     try:
-        cr = Crossref(mailto = "victor.rogalev@diamond.ac.uk") # necessary to end up in the polite pool
+        cr = Crossref(mailto="victor.rogalev@diamond.ac.uk")  # necessary to end up in the polite pool
         work = cr.works(ids=value)
         work['message']['title']
     except Exception as e:
         raise ValidationError(f"Invalid DOI: {e}")
 
+
 def file_size_valid(value):
-    limit = 10 * 1024 * 1024 # 10 MB
+    limit = 10 * 1024 * 1024  # 10 MB
     if value.size > limit:
         raise ValidationError('File size is limited to 10 MB!')
+
 
 def mendeljev_valid(value):
     try:
@@ -38,6 +40,7 @@ def mendeljev_valid(value):
     except Exception:
         raise ValidationError(f"Unknown chemical element {value}")
 
+
 def xdi_valid(value):
     temp_xdi_file = os.path.join(XDI_TMP_DIR.name, value.name)
 
@@ -45,8 +48,8 @@ def xdi_valid(value):
         with open(temp_xdi_file, 'w') as f:
             f.write(value.read().decode('utf-8'))
 
-        xdi_file = read_xdi(filename=temp_xdi_file)
-        if xdi_file.element.decode('utf-8') == '':
+        xdi_file = parse(temp_xdi_file)
+        if xdi_file.attrs['Element']['symbol'] == '':
             raise Exception('no element found')
         return
     except Exception as e:
@@ -62,7 +65,8 @@ class XASFile(models.Model):
     EDGE_CHOICES = ((xrl.K_SHELL, "K"), (xrl.L1_SHELL, "L1"), (xrl.L2_SHELL, "L2"), (xrl.L3_SHELL, "L3"))
 
     # upload_file = models.FileField(upload_to='uploads/%Y/%m/%d/', validators=[file_size_valid, xdi_valid])
-    upload_file = models.FileField(upload_to='uploads/%Y/%m/%d/', validators=[file_size_valid])
+    upload_file = models.FileField(upload_to=os.environ.get("UPLOAD"),
+                                   validators=[file_size_valid, xdi_valid])
     upload_file_doi = models.CharField('Citation DOI', max_length=256, default='', validators=[doi_valid])
     upload_timestamp = models.DateTimeField('date published', auto_now_add=True)
     element = models.CharField(max_length=3, validators=[mendeljev_valid])
@@ -82,15 +86,17 @@ class XASFile(models.Model):
     def name(self):
         return os.path.basename(self.upload_file.name)
 
+
 class XASArray(models.Model):
     file = models.ForeignKey(XASFile, on_delete=models.CASCADE)
-    array = models.TextField() # this will be a numpy array turned into JSON...
+    array = models.TextField()  # this will be a numpy array turned into JSON...
     unit = models.CharField(max_length=20)
     name = models.CharField(max_length=50)
 
+
 class XASMode(models.Model):
     UNKNOWN = -1
-    TRANSMISSION= 0
+    TRANSMISSION = 0
     FLUORESCENCE = 1
     FLUORESCENCE_UNITSTEP = 2
     XMU = 3
@@ -102,6 +108,7 @@ class XASMode(models.Model):
 
     file = models.ForeignKey(XASFile, on_delete=models.CASCADE)
     mode = models.SmallIntegerField(choices=MODE_CHOICES, default=UNKNOWN)
+
 
 class XASUploadAuxData(models.Model):
     aux_description = models.CharField('Description', max_length=256, default='')
@@ -119,27 +126,27 @@ class XASUploadAuxData(models.Model):
         if imghdr.what(self.aux_file.path) is not None:
 
             try:
-                self.aux_thumbnail = make_image_base64(self.aux_file, (150, 150)) # thumbnail
-                self.aux_image = make_image_base64(self.aux_file) # regular size
+                self.aux_thumbnail = make_image_base64(self.aux_file, (150, 150))  # thumbnail
+                self.aux_image = make_image_base64(self.aux_file)  # regular size
                 super().save(update_fields=['aux_thumbnail', 'aux_image'])
             except Exception as e:
                 print("save exception: {}".format(e))
                 raise
 
 
-
 class XASDownloadFile(models.Model):
-    #ip_address = models.GenericIPAddressField()
+    # ip_address = models.GenericIPAddressField()
     download_timestamp = models.DateTimeField('date downloaded', auto_now_add=True)
     downloader = models.ForeignKey(User, on_delete=models.SET_NULL, null=True)
     file = models.ForeignKey(XASFile, on_delete=models.CASCADE)
-    
+
+
 class XASDownloadAuxData(models.Model):
-    #ip_address = models.GenericIPAddressField()
+    # ip_address = models.GenericIPAddressField()
     download_timestamp = models.DateTimeField('date downloaded', auto_now_add=True)
     downloader = models.ForeignKey(User, on_delete=models.SET_NULL, null=True)
     file = models.ForeignKey(XASUploadAuxData, on_delete=models.CASCADE)
-    
+
 
 # based on https://stackoverflow.com/a/56304444/1253230
 def make_image_base64(src_image_field, size=None):

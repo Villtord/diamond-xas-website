@@ -6,6 +6,7 @@ STATIC_URL=/static/
 STATIC_ROOT=/app/xasdb1/static/
 AUTHENTICATION_BACKENDS=django.contrib.auth.backends.AllowAllUsersModelBackend
 MEDIA_ROOT=/app/media/
+UPLOAD=upload/%Y/%m/%d/
 FILE_UPLOAD_PERMISSIONS=0o600
 FILE_UPLOAD_DIRECTORY_PERMISSIONS=0o700
 HOST=localhost:8085

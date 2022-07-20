@@ -1,0 +1,147 @@
+# forked from https://pypi.org/project/xdi-pandas/
+# adjusted/fixed to work within this project
+# Victor Rogalev DLS 2022
+import dateutil.parser
+
+
+def parse_enum(enum):
+    return set(
+        s.lower() for s in enum.strip().replace('\n', ' ').replace('  ', ' ').split(' ')
+    )
+
+
+allowed_symbols = parse_enum('''
+H  He Li Be B  C  N  O  F  Ne Na Mg Al Si P  S
+Cl Ar K  Ca Sc Ti V  Cr Mn Fe Co Ni Cu Zn Ga Ge
+As Se Br Kr Rb Sr Y  Zr Nb Mo Tc Ru Rh Pd Ag Cd
+In Sn Sb Te I  Xe Cs Ba La Ce Pr Nd Pm Sm Eu Gd
+Tb Dy Ho Er Tm Yb Lu Hf Ta W  Re Os Ir Pt Au Hg
+Tl Pb Bi Po At Rn Fr Ra Ac Th Pa U  Np Pu Am Cm
+Bk Cf Es Fm Md No Lr Rf Db Sg Bh Hs Mt Ds Rg Cn
+Uut Fl Uup Lv Uus Uuo
+''')
+
+allowed_edges = parse_enum('''
+K L  L1 L2 L3 M  M1 M2 M3 M4 M5
+N N1 N2 N3 N4 N5 N6 N7 O  O1 O2 O3 O4 O5 O6 O7
+''')
+
+
+def maybe(type):
+    def validator(value):
+        if value.lower() == 'none':
+            return None
+        else:
+            return type(value)
+
+    return validator
+
+
+# @withrepr(lambda x: 'Valid ISO8601 datetime.')
+def isotime(v):
+    return dateutil.parser.parse(v)
+
+
+def human_bool(v):
+    if v == 'yes':
+        return True
+    elif v == 'no':
+        return False
+    else:
+        raise ValueError('%s is neither yes or no' % v)
+
+
+def one_of(list, name):
+    # @withrepr(lambda x: '%s' % name)
+    def validator(v):
+        if v.lower() in list:
+            return v
+        else:
+            raise ValueError('%s is not a valid %s.' % (v, name))
+
+    validator.__repr__ = lambda x: 'oto'
+    return validator
+
+
+def tuple_validator(*types):
+    # @withrepr(lambda x: 'tuple{%s}' % ', '.join(['%r' % r for r in types]))
+    def validator(v):
+        try:
+            values = v.split(' ')
+            return tuple([types[i](values[i]) for i, v in enumerate(types)])
+        except (ValueError, IndexError) as e:
+            raise ValueError('Could not convert %r to tuple(%r)' % (v, types))
+
+    return validator
+
+
+def any_of(*types):
+    # @withrepr(lambda x: '<any of [%s]>' % ', '.join('%r' % type for type in types))
+    def validator(v):
+        for type in types:
+            try:
+                res = type(v)
+                return res
+            except ValueError:
+                pass
+        raise ValueError('Could not convert %s to any of %s' % (v, types))
+
+    return validator
+
+
+energy = any_of(tuple_validator(float, one_of(['ev', 'gev', 'gm'], "<class 'energy'>")), float)
+current = tuple_validator(float, one_of(['a'], "<class 'current'>"))
+temperature = tuple_validator(float, one_of(['k', 'c'], "<class 'temperature'>"))
+two_tuple_float = tuple_validator(float, float)
+
+xdi_fields = {
+    'Beamline.collimation': str,
+    'Beamline.focusing': str,
+    'Beamline.harmonic_rejection': str,
+    'Beamline.name': str,
+    'Detector.i0': str,
+    'Detector.it': str,
+    'Detector.if': str,
+    'Detector.ir': str,
+    'Element.edge': one_of(allowed_edges, 'edge'),
+    'Element.symbol': one_of(allowed_symbols, 'chemical symbol'),
+    'Element.reference': one_of(allowed_symbols, 'chemical symbol'),
+    'Element.ref_edge': one_of(allowed_edges, 'edge'),
+    'Mono.d_spacing': float,
+    'Mono.name': str,
+    'Facility.current': current,
+    'Facility.energy': energy,
+    'Athena.bkg_kweight': float,
+    'Athena.clamps': two_tuple_float,
+    'Athena.dk': float,
+    'Athena.dr': float,
+    'Athena.e0': float,
+    'Athena.edge_step': float,
+    'Athena.eshift': float,
+    'Athena.fixed_step': human_bool,
+    'Athena.importance': float,
+    'Athena.k_range': two_tuple_float,
+    'Athena.kweight': float,
+    'Athena.normalization_range': two_tuple_float,
+    'Athena.phase_correction': human_bool,
+    'Athena.plot_multiplier': float,
+    'Athena.post_edge_polynomial': str,
+    'Athena.pre_edge_line': str,
+    'Athena.pre_edge_range': two_tuple_float,
+    'Athena.r_range': two_tuple_float,
+    'Athena.rbkg': float,
+    'Athena.spline_range_energy': two_tuple_float,
+    'Athena.spline_range_k': two_tuple_float,
+    'Athena.standard': maybe(str),
+    'Athena.window': str,
+    'Athena.y_offset': float,
+    'Scan.start_time': isotime,
+    'Scan.end_time': isotime,
+    'Scan.edge_energy': energy,
+    'Sample.name': str,
+    'Sample.id': str,
+    'Sample.stoichiometry': str,
+    'Sample.prep': str,
+    'Sample.experimenters': str,
+    'Sample.temperature': temperature
+}

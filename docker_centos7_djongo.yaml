@@ -23,7 +23,7 @@ RUN rm Miniconda3-latest-Linux-x86_64.sh
 COPY xasdb/. /app
 
 #RUN conda env update --file app/requirements.yaml
-RUN conda env update --file app/requirements.yaml
+RUN conda env update --file app/requirements_djongo.yaml
 
 # this will run as root but not as user at K8s - no further write access to created folders!
 #RUN python /app/manage.py migrate
