@@ -1,0 +1,38 @@
+apiVersion: batch/v1
+kind: CronJob
+metadata:
+  name: hello
+spec:
+  schedule: "* * * * *"
+  jobTemplate:
+    spec:
+      template:
+        spec:
+          securityContext:
+            runAsUser: 1102814
+            runAsGroup: 1102814
+            supplementalGroups:
+              - 37900
+          volumes:
+            - name: dls
+              hostPath:
+                path: /dls
+                type: Directory
+            - name: nslcd
+              hostPath:
+                path: /var/run/nslcd/socket
+          containers:
+          - name: hello
+            image: busybox:1.28
+            imagePullPolicy: IfNotPresent
+            command:
+            - /bin/sh
+            - -c
+            - date; echo Hello from the Kubernetes cluster > /dls/science/groups/das/xasdb/log.txt
+          volumeMounts:
+            - mountPath: /dls
+              name: dls
+              mountPropagation: HostToContainer
+            - mountPath: /var/run/nslcd/socket
+              name: nslcd
+          restartPolicy: OnFailure
