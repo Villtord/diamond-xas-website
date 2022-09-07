@@ -403,7 +403,7 @@ def file(request, file_id):
 
 
 def _file_plot(xaxis, yaxis, xaxis_name, yaxis_name):
-    plot = figure(x_axis_label=xaxis_name, y_axis_label=yaxis_name, plot_width=500, plot_height=400,
+    plot = figure(x_axis_label=xaxis_name, y_axis_label=yaxis_name, plot_width=800, plot_height=400,
                   tooltips=[('(x, y)', '($x, $y)')],output_backend="webgl")
     plot.hover.mode = 'vline'
     plot.line(xaxis, yaxis, line_width=2, color="#22aa22")

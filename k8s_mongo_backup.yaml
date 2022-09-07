@@ -13,26 +13,21 @@ spec:
             runAsGroup: 1102814
             supplementalGroups:
               - 37900
+          containers:
+          - name: hello
+            securityContext:
+              privileged: false
+            image: busybox
+            command: ["/bin/sh"]
+            args: ["-c", "date > /dls/science/groups/das/xasdb/log.txt"]
+            volumeMounts:
+              - mountPath: /dls
+                name: dls
+                mountPropagation: HostToContainer
+            imagePullPolicy: IfNotPresent
+          restartPolicy: OnFailure
           volumes:
             - name: dls
               hostPath:
                 path: /dls
                 type: Directory
-            - name: nslcd
-              hostPath:
-                path: /var/run/nslcd/socket
-          containers:
-          - name: hello
-            image: busybox:1.28
-            imagePullPolicy: IfNotPresent
-            command:
-            - /bin/sh
-            - -c
-            - date; echo Hello from the Kubernetes cluster > /dls/science/groups/das/xasdb/log.txt
-          volumeMounts:
-            - mountPath: /dls
-              name: dls
-              mountPropagation: HostToContainer
-            - mountPath: /var/run/nslcd/socket
-              name: nslcd
-          restartPolicy: OnFailure
