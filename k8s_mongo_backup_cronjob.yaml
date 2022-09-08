@@ -1,9 +1,12 @@
+# this job triggers every day at midnight
 apiVersion: batch/v1
 kind: CronJob
 metadata:
-  name: hello
+  name: backup-crongob
 spec:
-  schedule: "* * * * *"
+  schedule: "0 0 * * *"
+  successfulJobsHistoryLimit: 3
+  failedJobsHistoryLimit: 1
   jobTemplate:
     spec:
       template:
@@ -17,14 +20,19 @@ spec:
           - name: hello
             securityContext:
               privileged: false
-            image: busybox
-            command: ["/bin/sh"]
-            args: ["-c", "date > /dls/science/groups/das/xasdb/log.txt"]
+            image: mongo:5
+            args:
+            - /bin/sh
+            - -c
+            - mongodump --host=$MONGO_DB_HOST --username=$MONGO_INITDB_ROOT_USERNAME --port=27017 -p=$MONGO_INITDB_ROOT_PASSWORD --out=$MONGO_BACKUP/$(date '+%Y-%m-%d')
             volumeMounts:
               - mountPath: /dls
                 name: dls
                 mountPropagation: HostToContainer
             imagePullPolicy: IfNotPresent
+            envFrom:
+              - configMapRef:
+                  name: mongo-xasdb-configmap
           restartPolicy: OnFailure
           volumes:
             - name: dls

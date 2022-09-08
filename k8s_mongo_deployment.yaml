@@ -1,36 +1,3 @@
-#apiVersion: apps/v1
-#kind: Deployment
-#metadata:
-#  labels:
-#    app: xasdb-mongodb-dep
-#    release: test
-#  name: xasdb-mongodb-deployment
-#spec:
-#  replicas: 1
-#  selector:
-#    matchLabels:
-#      app: xasdb-mongo
-#  minReadySeconds: 10
-#  strategy:
-#    type: RollingUpdate
-#    rollingUpdate:
-#      maxUnavailable: 1
-#      maxSurge: 1
-#  template:
-#    metadata:
-#      labels:
-#        app: xasdb-mongo
-#    spec:
-#      containers:
-#      - name: mongodb
-#        envFrom:
-#          - configMapRef:
-#              name: mongo-xasdb-configmap
-#        image: mongo:5
-#        imagePullPolicy: Always
-#        ports:
-#            - containerPort: 27017
-#
 
 apiVersion: apps/v1
 kind: Deployment
@@ -53,7 +20,7 @@ spec:
         app: mongo-xasdb
     spec:
       containers:
-      - image: mongo:latest
+      - image: mongo:5
         name: mongo
         args: ["--dbpath","/data/db"]
         livenessProbe:
@@ -83,17 +50,6 @@ spec:
         envFrom:
           - configMapRef:
               name: mongo-xasdb-configmap
-#        env:
-#        - name: MONGO_INITDB_ROOT_USERNAME
-#          valueFrom:
-#            secretKeyRef:
-#              name: mongo-creds
-#              key: username
-#        - name: MONGO_INITDB_ROOT_PASSWORD
-#          valueFrom:
-#            secretKeyRef:
-#              name: mongo-creds
-#              key: password
         volumeMounts:
         - name: mongo-data-dir
           mountPath: "/data/db"

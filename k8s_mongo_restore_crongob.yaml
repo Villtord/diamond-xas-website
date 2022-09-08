@@ -1,0 +1,41 @@
+# this job needs to be started manually as it is set to trigger on 31st of February (you know it, right?)
+apiVersion: batch/v1
+kind: CronJob
+metadata:
+  name: restore-crongob
+spec:
+  schedule: "* * 31 2 *"
+  successfulJobsHistoryLimit: 1
+  failedJobsHistoryLimit: 1
+  jobTemplate:
+    spec:
+      template:
+        spec:
+          securityContext:
+            runAsUser: 1102814
+            runAsGroup: 1102814
+            supplementalGroups:
+              - 37900
+          containers:
+          - name: restore-me
+            securityContext:
+              privileged: false
+            image: mongo:5
+            args:
+            - /bin/sh
+            - -c
+            - mongorestore --host=$MONGO_DB_HOST --username=$MONGO_INITDB_ROOT_USERNAME --port=27017 -p=$MONGO_INITDB_ROOT_PASSWORD $MONGO_BACKUP/$(date '+%Y-%m-%d')
+            volumeMounts:
+              - mountPath: /dls
+                name: dls
+                mountPropagation: HostToContainer
+            imagePullPolicy: IfNotPresent
+            envFrom:
+              - configMapRef:
+                  name: mongo-xasdb-configmap
+          restartPolicy: OnFailure
+          volumes:
+            - name: dls
+              hostPath:
+                path: /dls
+                type: Directory
