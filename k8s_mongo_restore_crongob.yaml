@@ -24,7 +24,12 @@ spec:
             args:
             - /bin/sh
             - -c
-            - mongorestore --host=$MONGO_DB_HOST --username=$MONGO_INITDB_ROOT_USERNAME --port=27017 -p=$MONGO_INITDB_ROOT_PASSWORD $MONGO_BACKUP/$(date '+%Y-%m-%d')
+            - >
+              mongorestore
+              --host=$MONGO_DB_HOST
+              --username=$MONGO_INITDB_ROOT_USERNAME
+              --port=27017
+              -p=$MONGO_INITDB_ROOT_PASSWORD $MONGO_BACKUP/$(date '+%Y-%m-%d')
             volumeMounts:
               - mountPath: /dls
                 name: dls
