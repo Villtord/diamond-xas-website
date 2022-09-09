@@ -19,9 +19,9 @@ spec:
         supplementalGroups:
           - 37900
       volumes:
-        - name: home
+        - name: dls
           hostPath:
-            path: /home
+            path: /dls
             type: Directory
         - name: nslcd
           hostPath:
@@ -31,18 +31,20 @@ spec:
           securityContext:
             privileged: false
           image: gcr.io/diamond-privreg/xas-database/k8s-xas-database:test
-          command: [ "/bin/sh" ]
+#          command: [ "/bin/sh" ]
+          command: ["python"]
           envFrom:
             - configMapRef:
                 name: xasdb-configmap
             - configMapRef:
                 name: mongo-xasdb-configmap
-          args: [ "-c", "while true; do sleep 10; done" ]
+#          args: [ "-c", "while true; do sleep 10; done" ]
+          args: ["manage.py", "runserver", "0:8085"]
           ports:
             - containerPort: 8085
           volumeMounts:
-            - mountPath: /home
-              name: home
+            - mountPath: /dls
+              name: dls
               mountPropagation: HostToContainer
             - mountPath: /var/run/nslcd/socket
               name: nslcd
