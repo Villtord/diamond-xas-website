@@ -38,6 +38,17 @@ spec:
                 name: xasdb-configmap
             - configMapRef:
                 name: mongo-xasdb-configmap
+          env:
+            - name: MONGO_INITDB_ROOT_USERNAME
+              valueFrom:
+                secretKeyRef:
+                  name: mongo-admin-secret
+                  key: username
+            - name: MONGO_INITDB_ROOT_PASSWORD
+              valueFrom:
+                secretKeyRef:
+                  name: mongo-admin-secret
+                  key: password
 #          args: [ "-c", "while true; do sleep 10; done" ]
           args: ["manage.py", "runserver", "0:8085"]
           ports:

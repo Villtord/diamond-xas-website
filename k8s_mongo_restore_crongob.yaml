@@ -28,16 +28,39 @@ spec:
               mongorestore
               --host=$MONGO_DB_HOST
               --username=$MONGO_INITDB_ROOT_USERNAME
-              --port=27017
+              --port=$MONGO_DB_PORT
               -p=$MONGO_INITDB_ROOT_PASSWORD $MONGO_BACKUP/$(date '+%Y-%m-%d')
             volumeMounts:
               - mountPath: /dls
                 name: dls
                 mountPropagation: HostToContainer
             imagePullPolicy: IfNotPresent
-            envFrom:
-              - configMapRef:
+            env:
+            - name: MONGO_DB_HOST
+              valueFrom:
+                configMapKeyRef:
                   name: mongo-xasdb-configmap
+                  key: MONGO_DB_HOST
+            - name: MONGO_DB_PORT
+              valueFrom:
+                configMapKeyRef:
+                  name: mongo-xasdb-configmap
+                  key: MONGO_DB_PORT
+            - name: MONGO_BACKUP
+              valueFrom:
+                configMapKeyRef:
+                  name: mongo-xasdb-configmap
+                  key: MONGO_BACKUP
+            - name: MONGO_INITDB_ROOT_USERNAME
+              valueFrom:
+                secretKeyRef:
+                  name: mongo-admin-secret
+                  key: username
+            - name: MONGO_INITDB_ROOT_PASSWORD
+              valueFrom:
+                secretKeyRef:
+                  name: mongo-admin-secret
+                  key: password
           restartPolicy: OnFailure
           volumes:
             - name: dls
