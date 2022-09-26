@@ -91,10 +91,9 @@ metadata:
 spec:
   ports:
   - name: http
-    ports:
-    - name: http
-      port: 27017
-      targetPort: 27017
-      protocol: TCP
+    port: 27017
+    targetPort: 27017
+    protocol: TCP
   selector:
     app: mongo-xasdb
+  type: ClusterIP
