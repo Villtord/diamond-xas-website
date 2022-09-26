@@ -79,3 +79,22 @@ spec:
       volumes:
         - name: mongo-data-dir
           emptyDir: {}
+
+---
+---
+apiVersion: v1
+kind: Service
+metadata:
+  labels:
+    app: mongo-xasdb
+  name: mongo-xasdb-service
+spec:
+  ports:
+  - name: http
+    ports:
+    - name: http
+      port: 27017
+      targetPort: 27017
+      protocol: TCP
+  selector:
+    app: mongo-xasdb
