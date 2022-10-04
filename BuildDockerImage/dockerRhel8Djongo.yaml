@@ -1,0 +1,17 @@
+FROM rockylinux:8
+USER root
+
+RUN yum -y update && yum clean all
+
+RUN yum install -y vim python3.9
+RUN ln -fs /usr/bin/python3 /usr/bin/python
+
+COPY . /app
+RUN chmod 777 /app
+RUN pip3 install --no-cache-dir -r /app/BuildDockerImage/requirementsRhel8Djongo.txt
+
+WORKDIR /app
+
+EXPOSE 8085
+
+ENTRYPOINT ["/bin/bash"]
