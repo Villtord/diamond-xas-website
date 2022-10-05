@@ -1,0 +1,19 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: xasdb-configmap
+data:
+  AUTHENTICATION_BACKENDS: django.contrib.auth.backends.AllowAllUsersModelBackend
+  DEBUG: "True"
+  EMAIL_HOST: exchsmtp.stfc.ac.uk
+  EMAIL_PORT: "25"
+  FILE_UPLOAD_DIRECTORY_PERMISSIONS: "0o700"
+  FILE_UPLOAD_PERMISSIONS: "0o600"
+  HOME: /app/
+  HOST: localhost:8085
+  MEDIA_ROOT: /dls/science/groups/das/xasdb/xasdb_backup/media/
+  MPLCONFIGDIR: /app/config/
+  SERVICE_HOST: 172.23.168.180
+  STATIC_ROOT: /app/xasdb1/static/
+  STATIC_URL: /static/
+  UPLOAD: upload/%Y/%m/%d/

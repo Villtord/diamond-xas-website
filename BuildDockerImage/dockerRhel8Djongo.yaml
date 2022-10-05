@@ -3,12 +3,14 @@ USER root
 
 RUN yum -y update && yum clean all
 
-RUN yum install -y vim python3.9
+RUN yum install -y vim python3.9 nss-pam-ldapd
+RUN sed -i 's/sss/ldap/g' /etc/nsswitch.conf
 RUN ln -fs /usr/bin/python3 /usr/bin/python
 
-COPY . /app
-RUN chmod 777 /app
-RUN pip3 install --no-cache-dir -r /app/BuildDockerImage/requirementsRhel8Djongo.txt
+COPY xasdb/. /app
+COPY BuildDockerImage/. /app/BuildDockerImage
+RUN pip3 install --no-cache-dir -r /app/BuildDockerImage/requirementsRhel8.txt
+RUN chmod -R 777 /app && chmod 777 /root && chmod 777 /usr
 
 WORKDIR /app
 

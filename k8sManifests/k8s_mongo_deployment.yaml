@@ -1,4 +1,3 @@
-
 apiVersion: apps/v1
 kind: Deployment
 metadata:
@@ -47,40 +46,27 @@ spec:
           timeoutSeconds: 5
           successThreshold: 1
           failureThreshold: 6
+        envFrom:
+          - configMapRef:
+              name: mongo-xasdb-configmap
         env:
-        - name: MONGO_DB_HOST
-          valueFrom:
-            configMapKeyRef:
-              name: mongo-xasdb-configmap
-              key: MONGO_DB_HOST
-        - name: MONGO_DB_PORT
-          valueFrom:
-            configMapKeyRef:
-              name: mongo-xasdb-configmap
-              key: MONGO_DB_PORT
-        - name: MONGO_BACKUP
-          valueFrom:
-            configMapKeyRef:
-              name: mongo-xasdb-configmap
-              key: MONGO_BACKUP
-        - name: MONGO_INITDB_ROOT_USERNAME
-          valueFrom:
-            secretKeyRef:
-              name: mongo-admin-secret
-              key: username
-        - name: MONGO_INITDB_ROOT_PASSWORD
-          valueFrom:
-            secretKeyRef:
-              name: mongo-admin-secret
-              key: password
+          - name: MONGO_INITDB_ROOT_USERNAME
+            valueFrom:
+              secretKeyRef:
+                name: mongo-admin-secret
+                key: username
+          - name: MONGO_INITDB_ROOT_PASSWORD
+            valueFrom:
+              secretKeyRef:
+                name: mongo-admin-secret
+                key: password
         volumeMounts:
-        - name: mongo-data-dir
-          mountPath: "/data/db"
+          - name: mongo-data-dir
+            mountPath: "/data/db"
       volumes:
         - name: mongo-data-dir
           emptyDir: {}
 
----
 ---
 apiVersion: v1
 kind: Service

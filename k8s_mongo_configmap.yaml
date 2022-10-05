@@ -1,3 +1,0 @@
-MONGO_DB_HOST=mongo-xasdb-service.eir17846
-MONGO_DB_PORT=27017
-MONGO_BACKUP=/dls/science/groups/das/xasdb/xasdb_backup/

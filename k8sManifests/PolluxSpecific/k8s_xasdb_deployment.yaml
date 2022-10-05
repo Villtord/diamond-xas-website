@@ -1,0 +1,77 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: xasdb-deployment
+spec:
+  selector:
+    matchLabels:
+      app: k8s-xas-database
+  replicas: 1
+  template:
+    metadata:
+      name: xas-database-pod
+      labels:
+        app: k8s-xas-database
+    spec:
+      securityContext:
+        runAsUser: 1102814
+        runAsGroup: 1102814
+        supplementalGroups:
+          - 37900
+      volumes:
+        - name: dls
+          hostPath:
+            path: /dls
+            type: Directory
+        - name: nslcd
+          hostPath:
+            path: /var/run/nslcd/socket
+      containers:
+        - name: k8s-xas-database
+          securityContext:
+            privileged: false
+          image: gcr.io/diamond-privreg/xas-database/k8s-xas-database:rhel8
+#          command: [ "/bin/sh" ]
+          command: ["python"]
+          envFrom:
+            - configMapRef:
+                name: xasdb-configmap
+            - configMapRef:
+                name: mongo-xasdb-configmap
+          env:
+            - name: MONGO_INITDB_ROOT_USERNAME
+              valueFrom:
+                secretKeyRef:
+                  name: mongo-admin-secret
+                  key: username
+            - name: MONGO_INITDB_ROOT_PASSWORD
+              valueFrom:
+                secretKeyRef:
+                  name: mongo-admin-secret
+                  key: password
+#          args: [ "-c", "while true; do sleep 10; done" ]
+          args: ["manage.py", "runserver", "0:8085"]
+          ports:
+            - containerPort: 8085
+          volumeMounts:
+            - mountPath: /dls
+              name: dls
+              mountPropagation: HostToContainer
+            - mountPath: /var/run/nslcd/socket
+              name: nslcd
+          imagePullPolicy: Always
+
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: xas-database-service # example service name that the ingress will target
+spec:
+  ports:
+  - name: http
+    port: 80
+    protocol: TCP
+    targetPort: 8085
+  selector:
+    app: k8s-xas-database
+  type: LoadBalancer
