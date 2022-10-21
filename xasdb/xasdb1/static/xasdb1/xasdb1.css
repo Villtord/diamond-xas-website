@@ -21,6 +21,10 @@
 	text-decoration:none;
 }
 
+.spectrum_div {
+  width: 90%;
+}
+
 #spectra hr {
 	height: 2px;
 	background-color: #444A95;
@@ -34,7 +38,7 @@
 
 .file-table-main, .file-table-aux {
 	table-layout:fixed;
-	width: 800px;
+	width: 90%;
 }
 
 .file-table-aux th:first-child, .file-table-main td:first-child {
@@ -52,7 +56,8 @@ th {
 
 .settingsbutton {
   border-right: 1px solid #FFFFFF;
-  color: #CCCCCC;
+  background-color: #444A95;
+  color: #444A95;
   display: block;
   float: left;
   margin: 0;
@@ -123,16 +128,19 @@ th {
    min-width: 980px;
 }
 
-#topmenu a{
-  // border-right: 1px solid #FFFFFF;
-  color: #eee;
-  // display: block;
-  float: left;
-margin: 0;
-padding: 3px 15px 12px;
-}
-
 #topmenu .textmenu {
     padding-bottom: 11px;
     padding-top: 16px;
+}
+
+input[type="submit"], textarea {
+  width: 90%;
+  background-color : #3f0244;
+  color: white;
+  height: 40px;
+  text-transform: uppercase;
+}
+
+h1 {
+  font-size: 2em;
 }

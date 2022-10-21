@@ -14,18 +14,23 @@ Upload XDI files
 		</ul>
 	{% endif %}
 	<h1>Upload</h1>
-
 	<form enctype="multipart/form-data" method="post" id="upload_form">
 		{% csrf_token %}
-		{{ form.as_p }} 
+		<table class="file-table-main">
+		{{ form.as_table }} 
+		</table>
+		<br>
 		<div id="citation_details" style="display:none">
 		     Citation Title: <span id="citation_title"><span><br>
 		     Citation 
 		</div>
 		<br>
-		<div>Auxiliary files (optional)</div>
+		<div><h1> Auxiliary files (optional) </h1></div>
+		<br>
 		{{ upload_aux_formset.management_form }}
-		{% for upload_aux_form in upload_aux_formset %}
+		<!-- <table class="file-table-main"> -->
+			<!-- {{ upload_aux_formset.as_table }} -->
+			{% for upload_aux_form in upload_aux_formset %}
 			<div class="upload_aux_formset">
 				{{ upload_aux_form.aux_description.label }}
 				{{ upload_aux_form.aux_description }}
@@ -55,8 +60,12 @@ Upload XDI files
 			</div>
 		{% endif %}
 		<br/>
-		<input type="submit" name="submit" value="Upload!">
+		<!-- </table> -->
+		<br>
+		<input type="submit" name="submit" value="UPLOAD!">
+		<br>
          </form>
+		 <br>
 	 <!-- Include formset plugin - including jQuery dependency -->
 <script src="//ajax.googleapis.com/ajax/libs/jquery/2.1.3/jquery.min.js"></script>
 <script src="{% static 'xasdb1/jquery.formset.js' %}"></script>

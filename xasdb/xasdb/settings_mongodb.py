@@ -7,7 +7,7 @@ import os
 # os.environ['MONGO_INITDB_ROOT_USERNAME']='MongoXasDbAdmin'
 # os.environ['MONGO_INITDB_ROOT_PASSWORD']='MongoXasDbPassword2022'
 
-ALLOWED_HOSTS = [os.environ.get('SERVICE_HOST')]
+ALLOWED_HOSTS = [os.environ.get('ALLOWED_HOSTS')]
 
 DATABASES = {
         'default': {

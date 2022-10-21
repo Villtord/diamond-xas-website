@@ -17,3 +17,11 @@ data:
   STATIC_ROOT: /app/xasdb1/static/
   STATIC_URL: /static/
   UPLOAD: upload/%Y/%m/%d/
+  DJANGO_SETTINGS_MODULE: xasdb.settings_mongodb
+  ADMIN_NAME: Victor Rogalev
+  ADMIN_EMAIL: victor.rogalev@diamond.ac.uk
+  EMAIL_BACKEND: django.core.mail.backends.smtp.EmailBackend
+  EMAIL_SUBJECT_PREFIX: "[XASDB] "
+  SERVER_EMAIL: donotreply@xasdb.diamond.ac.uk
+  DEFAULT_AUTO_FIELD: django.db.models.BigAutoField
+  ALLOWED_HOSTS: 172.23.168.180

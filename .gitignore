@@ -12,3 +12,5 @@ ansible-playbook.yml
 xasdb/config/
 env/
 xraylib/
+.vscode/
+migrations/

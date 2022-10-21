@@ -16,9 +16,6 @@ import os
 # Quick-start development settings - unsuitable for production
 # See https://docs.djangoproject.com/en/4.0/howto/deployment/checklist/
 
-# # for local run
-# DEBUG = True
-# for K8s run
 DEBUG = eval(os.environ.get('DEBUG'))
 
 # SECURITY WARNING: keep the secret key used in production secret!
@@ -102,23 +99,6 @@ USE_I18N = True
 
 USE_TZ = True
 
-# # This section is valid for local run!
-# # Static files (CSS, JavaScript, Images)
-# # https://docs.djangoproject.com/en/4.0/howto/static-files/
-# ABSOLUTE_PATH = lambda x: os.path.join(os.path.abspath(os.path.dirname(__file__)), '..', x)
-#
-# STATIC_URL = '/static/'
-# STATIC_ROOT = ABSOLUTE_PATH('static/')
-#
-# # allow inactive users
-# AUTHENTICATION_BACKENDS = ['django.contrib.auth.backends.AllowAllUsersModelBackend']
-#
-# MEDIA_ROOT = ABSOLUTE_PATH('media/')
-# FILE_UPLOAD_PERMISSIONS = 0o600
-# FILE_UPLOAD_DIRECTORY_PERMISSIONS = 0o700
-
-
-# This section is valid for K8s run!
 # Static files (CSS, JavaScript, Images)
 # https://docs.djangoproject.com/en/4.0/howto/static-files/
 STATIC_URL = os.environ.get('STATIC_URL')
@@ -127,6 +107,7 @@ STATIC_ROOT = os.environ.get('STATIC_ROOT')
 # allow inactive users
 AUTHENTICATION_BACKENDS = [os.environ.get('AUTHENTICATION_BACKENDS')]
 
+# set media upload root folder
 MEDIA_ROOT = os.environ.get('MEDIA_ROOT')
 FILE_UPLOAD_PERMISSIONS = int(os.environ.get('FILE_UPLOAD_PERMISSIONS'), 8)
 FILE_UPLOAD_DIRECTORY_PERMISSIONS = int(os.environ.get('FILE_UPLOAD_DIRECTORY_PERMISSIONS'), 8)
@@ -136,14 +117,13 @@ EMAIL_HOST = os.environ.get('EMAIL_HOST')
 EMAIL_PORT = int(os.environ.get('EMAIL_PORT'))
 
 # email stuff
-# ADMINS = [('Tom Schoonjans', 'Tom.Schoonjans@diamond.ac.uk')]
-ADMINS = [('Victor Rogalev', 'victor.rogalev@diamond.ac.uk')]
-EMAIL_BACKEND = 'django.core.mail.backends.smtp.EmailBackend'
-EMAIL_SUBJECT_PREFIX = '[XASDB] '
-SERVER_EMAIL = "donotreply@xasdb.diamond.ac.uk"
+ADMINS = [(os.environ.get('ADMIN_NAME'), os.environ.get('ADMIN_EMAIL'))]
+EMAIL_BACKEND = os.environ.get('EMAIL_BACKEND')
+EMAIL_SUBJECT_PREFIX = os.environ.get('EMAIL_SUBJECT_PREFIX')
+SERVER_EMAIL = os.environ.get('SERVER_EMAIL')
 DEFAULT_FROM_EMAIL = SERVER_EMAIL
 
 # Default primary key field type
 # https://docs.djangoproject.com/en/4.0/ref/settings/#default-auto-field
 
-DEFAULT_AUTO_FIELD = 'django.db.models.BigAutoField'
+DEFAULT_AUTO_FIELD = os.environ.get('DEFAULT_AUTO_FIELD')

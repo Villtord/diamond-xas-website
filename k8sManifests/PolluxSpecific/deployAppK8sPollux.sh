@@ -22,3 +22,9 @@ kubectl apply -f k8s_mongo_restore_crongob.yaml
 
 #finally deploy django app
 kubectl apply -f PolluxSpecific/k8s_xasdb_deployment.yaml
+
+#deploy mongo db
+kubectl apply -f k8s_mongo_deployment.yaml
+
+#deploy mongo express if needed
+kubectl apply -f k8s_mongo_express.yaml

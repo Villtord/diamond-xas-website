@@ -97,13 +97,15 @@ def process_xdi_file(temp_xdi_file, request):
         elif hasattr(xdi_file, 'i2'):
             refer_used = True
             arrays['irefer'] = xdi_file.i2.to_numpy()
-
+        
+        # here is defined what is written in database xas_files
         xas_file = XASFile(upload_file=value,
                            upload_file_doi=request.POST['upload_file_doi'],
                            uploader=request.user,
                            element=element,
                            edge=edge,
                            refer_used=refer_used,
+                           license = request.POST['license'],
                            **kwargs)
         xas_file.save()
 

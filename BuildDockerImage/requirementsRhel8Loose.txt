@@ -2,7 +2,7 @@ numpy
 bokeh
 habanero
 pillow
-pymongo
+pymongo==3.12.3
 django-cleanup
 ldap3
 requests

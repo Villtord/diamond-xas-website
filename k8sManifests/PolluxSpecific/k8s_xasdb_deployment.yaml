@@ -31,8 +31,8 @@ spec:
           securityContext:
             privileged: false
           image: gcr.io/diamond-privreg/xas-database/k8s-xas-database:rhel8
-#          command: [ "/bin/sh" ]
-          command: ["python"]
+          command: [ "/bin/sh" ]
+          #command: ["python"]
           envFrom:
             - configMapRef:
                 name: xasdb-configmap
@@ -49,8 +49,8 @@ spec:
                 secretKeyRef:
                   name: mongo-admin-secret
                   key: password
-#          args: [ "-c", "while true; do sleep 10; done" ]
-          args: ["manage.py", "runserver", "0:8085"]
+          args: [ "-c", "while true; do sleep 10; done" ]
+          # args: ["manage.py", "runserver", "0:8085"]
           ports:
             - containerPort: 8085
           volumeMounts:

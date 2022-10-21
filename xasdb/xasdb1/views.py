@@ -34,10 +34,9 @@ from .models import XASFile, XASMode, XASUploadAuxData
 from .tokens import account_activation_token
 from .utils import process_xdi_file
 
-# HOST = 'https://xasdb.diamond.ac.uk'
-# HOST = 'http://xasdb.diamond.ac.uk:8050'
-# HOST = 'localhost:8085'
+# Read env variables
 HOST = os.environ.get('HOST')
+SERVICE_HOST = os.environ.get('SERVICE_HOST')
 
 XDI_TMP_DIR = tempfile.TemporaryDirectory()
 
@@ -84,11 +83,8 @@ def register(request):
             token = account_activation_token.make_token(user)
             message = 'Hi {user},\nPlease click on the link to confirm your registration,\n\n{domain}{url}'.format(
                 user=user.get_full_name(),
-                domain=os.environ.get('SERVICE_HOST'),
-                # This is valid for K8s run
+                domain = SERVICE_HOST,
                 url=reverse('xasdb1:activate', args=[uid, token])
-                # # This is valid for podman local run
-                # url=reverse('xasdb1:activate', args=[uid, token])
             )
             send_mail('Activate your account', message, settings.SERVER_EMAIL, [user.email])
             mail_admins('a new user has registered',
@@ -221,7 +217,6 @@ def element(request, element_id):
 
 @login_required(login_url='xasdb1:login')
 def upload(request):
-    # print(f"request.method: {request.method}")
     if request.method == 'POST':
         form = XASFileSubmissionForm(request.POST, request.FILES)
         upload_aux_formset = XASUploadAuxDataFormSet(request.POST, request.FILES)
@@ -237,6 +232,7 @@ def upload(request):
             with open(temp_xdi_file, 'w') as f:
                 contents = value.read().decode('utf-8')
                 f.write(contents)
+            # here file is parsed and saved into a database!
             xas_file = process_xdi_file(temp_xdi_file, request)
             # add auxiliary data
             for index, upload_aux_form in enumerate(upload_aux_formset):
@@ -255,7 +251,7 @@ def upload(request):
                 'a new dataset has been uploaded', \
                 'A new dataset has been uploaded by {} ({}).\nPlease process this submission by visiting {}.'.format(
                     request.user.get_full_name(), request.user.email,
-                    os.environ.get('SERVICE_HOST') + new_redirect.url))
+                    SERVICE_HOST + new_redirect.url))
 
             return new_redirect
     else:
@@ -360,10 +356,11 @@ def file(request, file_id):
                                                                                   journal=doi['journal'],
                                                                                   year=doi['year'])
         message = \
-            '''By downloading this file, I agree to cite its original authors' manuscript:<br><div 
+            '''This file is covered by license: <div style="padding-left: 30px"> {} </div>
+            <br>By downloading this file, I agree to cite its original authors' manuscript:<br><div 
             style="padding-left: 30px"><a href="{}">{}</a></div><br>as well as the manuscript covering this 
             website:<br>{}'''.format(
-                doi['url'], doi['citation'], OUR_CITATION)
+                file.license_name, doi['url'], doi['citation'], OUR_CITATION)
     except Exception as e:
         print(f'file.upload_file_doi: {file.upload_file_doi}')
         traceback.print_exc()
@@ -403,7 +400,9 @@ def file(request, file_id):
 
 
 def _file_plot(xaxis, yaxis, xaxis_name, yaxis_name):
-    plot = figure(x_axis_label=xaxis_name, y_axis_label=yaxis_name, plot_width=800, plot_height=400,
+    # plot = figure(x_axis_label=xaxis_name, y_axis_label=yaxis_name, plot_width=800, plot_height=400,
+                #   tooltips=[('(x, y)', '($x, $y)')],output_backend="webgl")
+    plot = figure(x_axis_label=xaxis_name, y_axis_label=yaxis_name, sizing_mode='scale_width', aspect_ratio=2,
                   tooltips=[('(x, y)', '($x, $y)')],output_backend="webgl")
     plot.hover.mode = 'vline'
     plot.line(xaxis, yaxis, line_width=2, color="#22aa22")

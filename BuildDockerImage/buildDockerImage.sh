@@ -7,5 +7,5 @@ podman build --format docker -f ./BuildDockerImage/dockerRhel8Djongo.yaml . -t g
 podman push gcr.io/diamond-privreg/xas-database/k8s-xas-database:rhel8
 
 # RHEL7 based
-podman build --format docker -f ./BuildDockerImage/dockerCentos7Djongo.yaml . -t gcr.io/diamond-privreg/conexs/k8conexs:latest
+podman build --format docker -f ./BuildDockerImage/dockerCentos7Djongo.yaml . -t gcr.io/diamond-privreg/xas-database/k8s-xas-database:latest
 podman push gcr.io/diamond-privreg/xas-database/k8s-xas-database:latest

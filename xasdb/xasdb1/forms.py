@@ -9,7 +9,7 @@ from .models import XASFile, XASUploadAuxData
 class XASFileSubmissionForm(ModelForm):
     class Meta:
         model = XASFile
-        fields = ['upload_file', 'upload_file_doi']
+        fields = ['upload_file', 'upload_file_doi', 'license']
         widgets = {
                 "upload_file_doi": TextInput(attrs={'onkeyup': "getDOI(this.value)"})
         }
@@ -17,7 +17,8 @@ class XASFileSubmissionForm(ModelForm):
 class XASFileVerificationForm(ModelForm):
     class Meta:
         model = XASFile
-        fields = ['review_status', 'upload_file_doi', 'element', 'edge', 'sample_name', 'sample_prep', 'beamline_name', 'facility_name', 'mono_name', 'mono_d_spacing']
+        fields = ['review_status', 'upload_file_doi', 'element', 'edge',
+                 'sample_name', 'sample_prep', 'beamline_name', 'facility_name', 'mono_name', 'mono_d_spacing', 'license']
 
 
 class XASUploadAuxDataForm(ModelForm):

@@ -3,6 +3,7 @@ import imghdr
 import os.path
 import tempfile
 from io import BytesIO
+from unittest.util import _MAX_LENGTH
 
 import django
 import xraylib as xrl
@@ -16,6 +17,7 @@ from .core import *
 
 XDI_TMP_DIR = tempfile.TemporaryDirectory()
 
+UPLOAD = os.environ.get("UPLOAD")
 
 def doi_valid(value):
     try:
@@ -64,8 +66,14 @@ class XASFile(models.Model):
 
     EDGE_CHOICES = ((xrl.K_SHELL, "K"), (xrl.L1_SHELL, "L1"), (xrl.L2_SHELL, "L2"), (xrl.L3_SHELL, "L3"))
 
-    # upload_file = models.FileField(upload_to='uploads/%Y/%m/%d/', validators=[file_size_valid, xdi_valid])
-    upload_file = models.FileField(upload_to=os.environ.get("UPLOAD"),
+    CC_BY = 0
+    CC_BY_NC = 1
+    CC_BY_NC_ND = 2
+    YOU_SHALL_NOT_PASS = 3
+    LICENSE_CHOICES = ((CC_BY, "CC BY"),(CC_BY_NC, "CC BY NC"), (CC_BY_NC_ND, "CC BY NC ND"), (YOU_SHALL_NOT_PASS, "NO ONE CAN DOWNLOAD IT"))
+
+    license = models.SmallIntegerField(choices=LICENSE_CHOICES, default=YOU_SHALL_NOT_PASS)
+    upload_file = models.FileField(upload_to=UPLOAD,
                                    validators=[file_size_valid, xdi_valid])
     upload_file_doi = models.CharField('Citation DOI', max_length=256, default='', validators=[doi_valid])
     upload_timestamp = models.DateTimeField('date published', auto_now_add=True)
@@ -85,6 +93,11 @@ class XASFile(models.Model):
     @property
     def name(self):
         return os.path.basename(self.upload_file.name)
+    
+    @property
+    def license_name(self):
+        a,b = zip(*self.LICENSE_CHOICES)
+        return b[a.index(self.license)]
 
 
 class XASArray(models.Model):
@@ -112,7 +125,7 @@ class XASMode(models.Model):
 
 class XASUploadAuxData(models.Model):
     aux_description = models.CharField('Description', max_length=256, default='')
-    aux_file = models.FileField(upload_to='uploads/%Y/%m/%d/', validators=[file_size_valid])
+    aux_file = models.FileField(upload_to=UPLOAD, validators=[file_size_valid])
     aux_thumbnail = models.TextField(blank=True)
     aux_image = models.TextField(blank=True)
     file = models.ForeignKey(XASFile, on_delete=models.CASCADE)

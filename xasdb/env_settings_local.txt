@@ -1,0 +1,20 @@
+DJANGO_SETTINGS_MODULE: xasdb.settings_sqlite_dev
+DEBUG: True
+STATIC_URL: /static/
+STATIC_ROOT: /scratch/eir17846/DataAnalysis/Projects/diamond-xas-website/xasdb/xasdb1/static/
+MEDIA_ROOT: /scratch/eir17846/DataAnalysis/Projects/diamond-xas-website/xasdb/media/
+AUTHENTICATION_BACKENDS: django.contrib.auth.backends.AllowAllUsersModelBackend
+FILE_UPLOAD_DIRECTORY_PERMISSIONS: 0o700
+FILE_UPLOAD_PERMISSIONS: 0o600
+EMAIL_HOST: exchsmtp.stfc.ac.uk
+EMAIL_PORT: 25
+ADMIN_NAME: Victor Rogalev
+ADMIN_EMAIL: victor.rogalev@diamond.ac.uk
+EMAIL_BACKEND: django.core.mail.backends.smtp.EmailBackend
+EMAIL_SUBJECT_PREFIX: [XASDB] 
+SERVER_EMAIL: donotreply@xasdb.diamond.ac.uk
+DEFAULT_AUTO_FIELD: django.db.models.BigAutoField
+HOST: localhost:8085
+SERVICE_HOST: localhost:8085
+UPLOAD: upload/%Y/%m/%d/
+ALLOWED_HOSTS:
