@@ -12,13 +12,12 @@ kubectl apply -f PolluxSpecific/k8s_mongo_sealedsecret.yaml
 kubectl apply -f PolluxSpecific/k8s_xasdb_sealedsecret.yaml
 
 # deploy configmaps
-kubectl apply -f k8s_mongo_configmap.yaml
+kubectl apply -f PolluxSpecific/k8s_mongo_configmap.yaml
 kubectl apply -f PolluxSpecific/k8s_xasdb_configmap.yaml
 
 #deploy cronjobs
 kubectl apply -f k8s_mongo_restore_crongob.yaml
-# don't need backup cronjob here as it will mess up the main backup from Argus
-#kubectl apply -f k8s_mongo_backup_crongob.yaml
+kubectl apply -f k8s_mongo_backup_crongob.yaml
 
 #finally deploy django app
 kubectl apply -f PolluxSpecific/k8s_xasdb_deployment.yaml

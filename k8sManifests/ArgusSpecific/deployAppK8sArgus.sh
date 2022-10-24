@@ -12,7 +12,7 @@ kubectl apply -f ArgusSpecific/k8s_mongo_sealedsecret.yaml
 kubectl apply -f ArgusSpecific/k8s_xasdb_sealedsecret.yaml
 
 # deploy configmaps
-kubectl apply -f k8s_mongo_configmap.yaml
+kubectl apply -f ArgusSpecific/k8s_mongo_configmap.yaml
 kubectl apply -f ArgusSpecific/k8s_xasdb_configmap.yaml
 
 #deploy cronjobs
